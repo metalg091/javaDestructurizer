@@ -25,7 +25,7 @@ done
 rm generator.out
 
 # Ask for cleanup
-echo "Do you want to clean up the directory? (yes/(no))"
+echo "Do you want to clean up the directory? (yes/No)"
 read -r response
 if [ "$response" = "yes" ]; then
     ./clearup.sh
