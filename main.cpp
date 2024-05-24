@@ -210,7 +210,6 @@ int createMethod(fstream *infile, ofstream *outfile, string line)
                 {
                     returnType = returnType.substr(returnType.find("of ") + 3) + "[]";
                 }
-                // std::cout << "Found returnType " << returnType << " " << name << endl;
             }
         }
     }
@@ -330,13 +329,6 @@ std::tuple<ofstream *, string, string> createFile(string line)
     pos = className.find_last_of('.');
     string name = className.substr(pos + 1);
     vector<string> package = split(className.substr(0, pos), ".");
-    /*
-    for(int i = 0; i < package.size(); i++){
-        std::cout << "package " << package[i] << endl;
-    }
-    std::cout << "name " << name << endl;
-    std::cout << "Found theClass " << className << endl;
-    */
     // create file
     string place;
     for (int i = 0; i < package.size(); i++)
@@ -387,7 +379,6 @@ int main(int argc, char **args)
         size_t pos = line.find('"');
         testNull(pos);
         auto [sfile, name, package] = createFile(line);
-        // std::cout << "Created file " << name << endl;
         *sfile << endl;
         bool needImport = false;
         vector<string> imports;
@@ -412,7 +403,6 @@ int main(int argc, char **args)
                     imports.push_back(tempparent);
                     needImport = true;
                 }
-                // std::cout << "Found theParent " << parent << " " << tempparent << endl;
             }
             s = "withInterface(\"";
             pos = line.find(s);
@@ -430,7 +420,6 @@ int main(int argc, char **args)
                     imports.push_back(tempinterface);
                     needImport = true;
                 }
-                // std::cout << "Found theInterface " << interface << endl;
             }
             getline(file, line);
             string vis;
@@ -480,7 +469,6 @@ int main(int argc, char **args)
                     imports.push_back(tempparent);
                     needImport = true;
                 }
-                // std::cout << "Found theParent " << parent << " " << tempparent << endl;
             }
             if (needImport)
             {
@@ -511,24 +499,20 @@ int main(int argc, char **args)
             }
             *sfile << vis << "interface " << name << parent << " {\n";
         }
-        // search for it.hasMethod it.hasConstructor it.hasField
-        // just search for the string, will call the function later
+        // search for methods, fields, constructors
         while (getline(file, line))
         {
             if (line.find("it.hasMethod") != string::npos)
             {
                 createMethod(&file, sfile, line);
-                // std::cout << "Found method" << endl;
             }
             else if (line.find("it.hasConstructor") != string::npos)
             {
                 createConstructor(&file, sfile, line, name);
-                // std::cout << "Found constructor" << endl;
             }
             else if (line.find("it.hasField") != string::npos)
             {
                 createVar(&file, sfile, line);
-                // std::cout << "Found field" << endl;
             }
         }
         *sfile << "\n}";
