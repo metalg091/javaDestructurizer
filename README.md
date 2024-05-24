@@ -14,4 +14,5 @@ Also attach the failing test-file!
 
 # Contributing:
 __KEEP IT SIMPLE!__ I'm not very good at coding and if I don't understand what your code does I'm not merging.
+Feel free to upload any and every official structure test you can find to the test folder!
 Also do not insult the code or the style in any ways plz!
