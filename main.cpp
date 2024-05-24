@@ -97,8 +97,7 @@ pair<string, string> typeNameSeparator(string line)
     string name;
     if (line.find("ofType") != string::npos)
     {
-        cout << line << endl;
-        // it.hasField("defaultAuthor", ofType("String"))
+        // structure => it.hasField("defaultAuthor", ofType("String"))
         name = line.substr(line.find('"') + 1);
         name = name.substr(0, name.find('"'));
         type = line.substr(line.find("ofType(\"") + 8);
@@ -558,6 +557,26 @@ int main(int argc, char **args)
                     }
                 }
             }
+        }
+        else if (line.find("theCheckedException") != string::npos)
+        {
+            getline(file, line);
+            string vis;
+            switch (protlvl(line))
+            {
+            case Public:
+                vis = "public ";
+                break;
+            case Protected:
+                vis = "protected ";
+                break;
+            case Private:
+                vis = "private ";
+                break;
+            case Default:
+                break;
+            }
+            *sfile << vis << "class " << name << " extends Exception {\n";
         }
         else
         {
