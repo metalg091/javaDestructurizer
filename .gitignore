@@ -3,5 +3,6 @@
 
 # Ignore all folders
 */
-# except test folder
+# except test folder and subfolders (both lines are needed)
 !test/
+!test/**
