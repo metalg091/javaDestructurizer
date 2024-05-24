@@ -60,16 +60,74 @@ ProtectionLevel protlvl(string line) // 1 == true, 0 == false
     }
 }
 
-int createVar(fstream *infile, ofstream *outfile, string line)
+string removeQuotes(string line)
+{
+    size_t pos = line.find('"');
+    if (pos == string::npos)
+    {
+        return line;
+    }
+    size_t pos2 = line.find('"', pos + 1);
+    if (pos == string::npos)
+    {
+        line = line.substr(0, pos) + line.substr(pos + 1);
+        return line;
+    }
+    return line.substr(0, pos) + line.substr(pos + 1, pos2 - pos - 1);
+}
+
+// check for list and arrays (never seen a set or map in a test) => there is a map in one of the tests
+string typeMaker(string type)
+{
+
+    if (type.find("List of ") != string::npos)
+    {
+        type = "List<" + type.substr(type.find("of ") + 3) + ">";
+    }
+    else if (type.find("array of ") != string::npos)
+    {
+        type = type.substr(type.find("of ") + 3) + "[]";
+    }
+    return removeQuotes(type);
+}
+
+pair<string, string> typeNameSeparator(string line)
 {
     string type;
     string name;
+    if (line.find("ofType") != string::npos)
+    {
+        cout << line << endl;
+        // it.hasField("defaultAuthor", ofType("String"))
+        name = line.substr(line.find('"') + 1);
+        name = name.substr(0, name.find('"'));
+        type = line.substr(line.find("ofType(\"") + 8);
+        type = type.substr(0, type.find("\")"));
+        return make_pair(typeMaker(type), removeQuotes(name));
+    }
+    else
+    {
+        if (line.find(':') != string::npos)
+        {
+            type = line.substr(line.find(':') + 2, line.find(')') - line.find(':') - 3);
+            name = line.substr(line.find('"') + 1, line.find(':') - line.find('"') - 1);
+            return make_pair(typeMaker(type), removeQuotes(name));
+        }
+        else
+        {
+            // cout << line << endl;
+            return make_pair(typeMaker(line), "todoName");
+        }
+    }
+}
+
+int createVar(fstream *infile, ofstream *outfile, string line)
+{
     string vis = "";
     string Static = "";
     string Final = "";
     // structure -> ("name: type")
-    name = line.substr(line.find('"') + 1, line.find(':') - line.find('"') - 1);
-    type = line.substr(line.find(':') + 2, line.find(')') - line.find(':') - 3);
+    auto [type, name] = typeNameSeparator(line);
     getline(*infile, line);
     // search for visibility
     switch (protlvl(line))
@@ -95,15 +153,7 @@ int createVar(fstream *infile, ofstream *outfile, string line)
     {
         Final = "final ";
     }
-    // check for list and arrays (never seen a set or map in a test)
-    if (type.find("List") != string::npos)
-    {
-        type = "List<" + type.substr(type.find("of ") + 3) + ">";
-    }
-    else if (type.find("array") != string::npos)
-    {
-        type = type.substr(type.find("of ") + 3) + "[]";
-    }
+    type = typeMaker(type);
     *outfile << "\t" << vis << Static << Final << type << " " << name << ";\n";
     getline(*infile, line);
     if (line.find("thatHas(") != string::npos)
@@ -152,18 +202,9 @@ int createMethod(fstream *infile, ofstream *outfile, string line)
         vector<string> tempV = split(temp, ", ");
         for (int i = 0; i < tempV.size(); i++)
         {
-            vector<string> tempV2 = split(tempV[i], ": ");
-            string tempVX = tempV2[1].substr(0, tempV2[1].find("\""));
-            if (tempVX.find("List") != string::npos)
-            {
-                tempVX = "List<" + tempVX.substr(tempVX.find("of ") + 3) + ">";
-            }
-            else if (tempVX.find("array") != string::npos)
-            {
-                tempVX = tempVX.substr(tempVX.find("of ") + 3) + "[]";
-            }
-            paramTypes.push_back(tempVX);
-            paramNames.push_back(tempV2[0].substr(1, tempV2[0].length()));
+            auto [temptype, tempname] = typeNameSeparator(tempV[i]);
+            paramTypes.push_back(temptype);
+            paramNames.push_back(tempname);
         }
     } // else no params
     for (int i = 0; i < 2; i++)
@@ -200,14 +241,7 @@ int createMethod(fstream *infile, ofstream *outfile, string line)
             {
                 returnType = line.substr(line.find("thatReturns(\"") + 13);
                 returnType = returnType.substr(0, returnType.find("\")"));
-                if (returnType.find("List") != string::npos)
-                {
-                    returnType = "List<" + returnType.substr(returnType.find("of ") + 3) + ">";
-                }
-                else if (returnType.find("array") != string::npos)
-                {
-                    returnType = returnType.substr(returnType.find("of ") + 3) + "[]";
-                }
+                returnType = typeMaker(returnType);
             }
         }
     }
@@ -252,18 +286,9 @@ int createConstructor(fstream *infile, ofstream *outfile, string line, string na
             vector<string> tempV = split(temp, ", ");
             for (int i = 0; i < tempV.size(); i++)
             {
-                vector<string> tempV2 = split(tempV[i], ": ");
-                string tempVX = tempV2[1].substr(0, tempV2[1].find("\""));
-                if (tempVX.find("List") != string::npos)
-                {
-                    tempVX = "List<" + tempVX.substr(tempVX.find("of ") + 3) + ">";
-                }
-                else if (tempVX.find("array") != string::npos)
-                {
-                    tempVX = tempVX.substr(tempVX.find("of ") + 3) + "[]";
-                }
-                paramTypes.push_back(tempVX);
-                paramNames.push_back(tempV2[0].substr(1, tempV2[0].length()));
+                auto [temptype, tempname] = typeNameSeparator(tempV[i]);
+                paramTypes.push_back(temptype);
+                paramNames.push_back(tempname);
             }
         }
         else
@@ -361,15 +386,19 @@ int main(int argc, char **args)
 {
     fstream file(args[1]);
     string line;
-    string stopString = "public static void init";
+    string stopString[2] = {"public void", "public static void"};
 
     if (file.is_open())
     {
-        while (getline(file, line))
+        bool go = true;
+        while (go && getline(file, line)) // first bool else it will skip the first line
         {
-            if (line.find(stopString) != string::npos)
+            for (int i = 0; i < 2; i++) // most use constant else segfault
             {
-                break;
+                if (line.find(stopString[i]) != string::npos)
+                {
+                    go = false;
+                }
             }
         }
         getline(file, line);
@@ -433,7 +462,6 @@ int main(int argc, char **args)
                 vis = "private ";
                 break;
             case Default:
-                std::cout << "default" << endl;
                 break;
             }
             if (needImport)
@@ -492,24 +520,68 @@ int main(int argc, char **args)
                 vis = "private ";
                 break;
             case Default:
-                std::cout << "default" << endl;
                 break;
             }
             *sfile << vis << "interface " << name << parent << " {\n";
         }
-        // search for methods, fields, constructors
+        else if (line.find("theEnum") != string::npos)
+        {
+            getline(file, line);
+            string vis;
+            switch (protlvl(line))
+            {
+            case Public:
+                vis = "public ";
+                break;
+            case Protected:
+                vis = "protected ";
+                break;
+            case Private:
+                vis = "private ";
+                break;
+            case Default:
+                break;
+            }
+            *sfile << vis << "enum " << name << " {\n";
+            getline(file, line);
+            if (line.find("hasEnumElements") != string::npos)
+            {
+                string temp = line.substr(line.find("hasEnumElements(") + 16);
+                temp = temp.substr(0, temp.find(")"));
+                vector<string> tempV = split(temp, ", ");
+                for (int i = 0; i < tempV.size(); i++)
+                {
+                    *sfile << "\t" << removeQuotes(tempV[i]);
+                    if (i != tempV.size() - 1)
+                    {
+                        *sfile << ",\n";
+                    }
+                }
+            }
+        }
+        else
+        {
+            cout << "Unknown type of class\n";
+            cout << line << endl;
+            exit(1);
+        }
+        // cout << "Hello I'm alive\n";
+        //  search for methods, fields, constructors
         while (getline(file, line))
         {
             if (line.find("it.hasMethod") != string::npos)
             {
+                // cout << "Method\n";
                 createMethod(&file, sfile, line);
             }
             else if (line.find("it.hasConstructor") != string::npos)
             {
+                // cout << "Constructor\n";
                 createConstructor(&file, sfile, line, name);
             }
             else if (line.find("it.hasField") != string::npos)
             {
+                // cout << "Field\n";
                 createVar(&file, sfile, line);
             }
         }
