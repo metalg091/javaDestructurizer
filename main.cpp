@@ -6,7 +6,7 @@
 #include <utility>
 #include <tuple>
 
-using namespace std;
+using namespace std; // for some reason it started to require std:: but don't remove, it could break the code
 
 // using capital letters to avoid conflict
 enum ProtectionLevel
@@ -211,9 +211,15 @@ int createConstructor(fstream *infile, ofstream *outfile, string line, string na
     {
         if (line.find("withArgsAsInParent") != string::npos)
         {
-            cout << "Constructor withArgsAsInParent\n";
+            cout << "**WARNING** Constructor withArgsAsInParent\n";
             paramTypes.push_back("withArgsAsInParent");
             paramNames.push_back("withArgsAsInParent");
+        }
+        else if (line.find("withArgsSimilarToFields") != string::npos)
+        {
+            cout << "**WARNING** Constructor withArgsSimilarToFields\n";
+            paramTypes.push_back("withArgsSimilarToFields");
+            paramNames.push_back("withArgsSimilarToFields");
         }
         else
         {
@@ -312,7 +318,7 @@ std::tuple<ofstream *, string, string> createFile(string line)
     ofstream *file = new ofstream(place);
     if (!file)
     {
-        std::cout << "womp womp" << endl;
+        std::cout << "File error if ya here, I can't help ya!" << endl;
         exit(1);
     }
     *file << "package ";
@@ -328,8 +334,9 @@ std::tuple<ofstream *, string, string> createFile(string line)
     return make_tuple(file, name, concat(package, '.'));
 }
 
-int main()
+int main(int argc, char **args)
 {
+    fstream file(args[1]);
     string line;
     string stopString = "public static void init";
     // fstream file("VariableStructureTest.java");
@@ -337,7 +344,7 @@ int main()
     // fstream file("EqualityConstraintStructureTest.java");
     // fstream file("BruteForceHeuristicStructureTest.java");
     // fstream file("ILPSolverStructureTest.java");
-    fstream file("InequalityConstraintStructureTest.java");
+    // fstream file("InequalityConstraintStructureTest.java");
     // fstream file("ConstraintStructureTest.java");
 
     if (file.is_open())
@@ -354,7 +361,7 @@ int main()
         size_t pos = line.find('"');
         testNull(pos);
         auto [sfile, name, package] = createFile(line);
-        std::cout << "Created file " << name << endl;
+        // std::cout << "Created file " << name << endl;
         *sfile << endl;
         bool needImport = false;
         vector<string> imports;
@@ -379,7 +386,7 @@ int main()
                     imports.push_back(tempparent);
                     needImport = true;
                 }
-                std::cout << "Found theParent " << parent << " " << tempparent << endl;
+                // std::cout << "Found theParent " << parent << " " << tempparent << endl;
             }
             s = "withInterface(\"";
             pos = line.find(s);
@@ -397,7 +404,7 @@ int main()
                     imports.push_back(tempinterface);
                     needImport = true;
                 }
-                std::cout << "Found theInterface " << interface << endl;
+                // std::cout << "Found theInterface " << interface << endl;
             }
             getline(file, line);
             string vis;
@@ -447,7 +454,7 @@ int main()
                     imports.push_back(tempparent);
                     needImport = true;
                 }
-                std::cout << "Found theParent " << parent << " " << tempparent << endl;
+                // std::cout << "Found theParent " << parent << " " << tempparent << endl;
             }
             if (needImport)
             {
@@ -490,7 +497,7 @@ int main()
             else if (line.find("it.hasConstructor") != string::npos)
             {
                 createConstructor(&file, sfile, line, name);
-                std::cout << "Found constructor" << endl;
+                // std::cout << "Found constructor" << endl;
             }
             else if (line.find("it.hasField") != string::npos)
             {
