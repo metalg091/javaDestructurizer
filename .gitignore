@@ -1,0 +1,5 @@
+# Ignore all .out files
+*.out
+
+# Ignore all folders
+*/
