@@ -60,17 +60,53 @@ ProtectionLevel protlvl(string line) // 1 == true, 0 == false
     }
 }
 
-int createVar(fstream file)
+int createVar(fstream *infile, ofstream *outfile, string line)
+{
+    string type;
+    string name;
+    string vis = "";
+    string Static = "";
+    string Final = "";
+    // structure -> ("name: type")
+    name = line.substr(line.find('"') + 1, line.find(':') - line.find('"') - 1);
+    type = line.substr(line.find(':') + 2, line.find(')') - line.find(':') - 3);
+    // cout << "Found name " << name << endl;
+    // cout << "Found type " << type << endl;
+    getline(*infile, line);
+    // search for visibility
+    switch (protlvl(line))
+    {
+    case Public:
+        vis = "public ";
+        break;
+    case Protected:
+        vis = "protected ";
+        break;
+    case Private:
+        vis = "private ";
+        break;
+    case Default:
+
+        break;
+    }
+    if (line.find("USABLE_WITHOUT_INSTANCE") != string::npos)
+    {
+        Static = "static ";
+    }
+    if (line.find("NOT_MODIFIABLE") != string::npos)
+    {
+        Final = "final ";
+    }
+    *outfile << "\t" << vis << Static << Final << type << " " << name << ";\n";
+    return 0;
+}
+
+int createMethod(fstream *infile, ofstream *outfile, string line)
 {
     return 0;
 }
 
-int createMethod(fstream file)
-{
-    return 0;
-}
-
-int createConstructor(fstream file)
+int createConstructor(fstream *infile, ofstream *outfile, string line)
 {
     return 0;
 }
@@ -140,9 +176,9 @@ int main()
 {
     string line;
     string stopString = "public static void init";
-    // fstream file("VariableStructureTest.java");
+    fstream file("VariableStructureTest.java");
     // fstream file("HeuristicStructureTest.java");
-    fstream file("EqualityConstraintStructureTest.java");
+    // fstream file("EqualityConstraintStructureTest.java");
     // fstream file("BruteForceHeuristicStructureTest.java");
 
     if (file.is_open())
@@ -235,18 +271,53 @@ int main()
         }
         else if (line.find("theInterface") != string::npos)
         {
-            bool hasParent = false;
-            string parent;
+            string parent = "";
             string s = "withParent(\"";
             pos = line.find(s);
             if (pos != string::npos)
             {
-                parent = line.substr(pos + s.length());
-                pos = parent.find('"');
-                parent = parent.substr(0, pos);
-                cout << "Found theParent " << parent << endl;
+                parent = " extends ";
+                string tempparent = line.substr(pos + s.length());
+                pos = tempparent.find('"');
+                tempparent = tempparent.substr(0, pos);
+                pos = tempparent.find_last_of('.');
+                parent += tempparent.substr(pos + 1);
+                tempparent = tempparent.substr(0, pos);
+                if (tempparent != package)
+                {
+                    imports.push_back(tempparent);
+                    needImport = true;
+                }
+                cout << "Found theParent " << parent << " " << tempparent << endl;
             }
-            line = line.substr(pos);
+            if (needImport)
+            {
+                for (int i = 0; i < imports.size(); i++)
+                {
+                    *sfile << "import ";
+                    *sfile << imports[i];
+                    *sfile << ";\n";
+                }
+                *sfile << ";\n";
+            }
+            getline(file, line);
+            string vis;
+            switch (protlvl(line))
+            {
+            case Public:
+                vis = "public ";
+                break;
+            case Protected:
+                vis = "protected ";
+                break;
+            case Private:
+                vis = "private ";
+                break;
+            case Default:
+                cout << "default" << endl;
+                break;
+            }
+            *sfile << vis << "interface " << name << parent << " {\n";
         }
         // search for it.hasMethod it.hasConstructor it.hasField
         // just seach for the string will call the function later
@@ -254,19 +325,23 @@ int main()
         {
             if (line.find("it.hasMethod") != string::npos)
             {
+                createMethod(&file, sfile, line);
                 cout << "Found method" << endl;
             }
             else if (line.find("it.hasConstructor") != string::npos)
             {
+                createConstructor(&file, sfile, line);
                 cout << "Found constructor" << endl;
             }
             else if (line.find("it.hasField") != string::npos)
             {
+                createVar(&file, sfile, line);
                 cout << "Found field" << endl;
             }
         }
+        *sfile << "\n}";
         file.close();
-        sfile->close(); // Close the ofstream properly
+        sfile->close(); // Close the ofstream properly -> VERY IMPORTANT!!! DO NOT REMOVE!!!
         delete sfile;   // Delete the ofstream object to prevent memory leaks
     }
     else
