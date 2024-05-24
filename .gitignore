@@ -3,3 +3,5 @@
 
 # Ignore all folders
 */
+# except test folder
+!test/
