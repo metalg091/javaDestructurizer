@@ -176,7 +176,7 @@ int createVar(fstream *infile, ofstream *outfile, string line)
         }
         if (hasSetter)
         {
-            *outfile << "\n\t" << "public void set" << toupper(name[0]) << name.substr(1) << "(" << type << " " << name << ") {\n";
+            *outfile << "\n\t" << "public void set" << (char)toupper(name[0]) << name.substr(1) << "(" << type << " " << name << ") {\n";
             *outfile << "\t\t// TODO\n";
             *outfile << "\t\tthis." << name << " = " << name << ";\n";
             *outfile << "\t}\n";
