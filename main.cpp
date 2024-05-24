@@ -88,6 +88,10 @@ string typeMaker(string type)
     {
         type = type.substr(type.find("of ") + 3) + "[]";
     }
+    else if (type.find("vararg of ") != string::npos)
+    {
+        type = type.substr(type.find("of ") + 3) + "...";
+    }
     return removeQuotes(type);
 }
 
