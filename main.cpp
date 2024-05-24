@@ -70,8 +70,6 @@ int createVar(fstream *infile, ofstream *outfile, string line)
     // structure -> ("name: type")
     name = line.substr(line.find('"') + 1, line.find(':') - line.find('"') - 1);
     type = line.substr(line.find(':') + 2, line.find(')') - line.find(':') - 3);
-    // std::cout << "Found name " << name << endl;
-    // std::cout << "Found type " << type << endl;
     getline(*infile, line);
     // search for visibility
     switch (protlvl(line))
