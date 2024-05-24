@@ -3,7 +3,7 @@ This is a tool that converts java structure test (give on java exams in ELTE) to
   - creates the files
   - sets packages
   - creates classes, interfacees
-  - sets inheritance, ipmlemets
+  - sets inheritance, implemets
   - properties with auto setter/getter generation
   -  creates the empty methodes
   -  and so on...
