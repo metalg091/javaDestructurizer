@@ -92,6 +92,21 @@ string typeMaker(string type)
     {
         type = type.substr(type.find("of ") + 3) + "...";
     }
+    else if (type.find("HashSet of ") != string::npos)
+    {
+        type = "HashSet<" + type.substr(type.find("of ") + 3) + ">";
+    }
+    else if (type.find("HashMap of ") != string::npos)
+    {
+        string temp = type.substr(type.find("of ") + 3);
+        string key = temp.substr(0, temp.find(" to "));
+        string value = temp.substr(temp.find(" to ") + 4);
+        type = "HashMap<" + key + ", " + value + ">";
+    }
+    else if (type.find("MultiSet of ") != string::npos)
+    {
+        type = "MultiSet<" + type.substr(type.find("of ") + 3) + ">";
+    }
     return removeQuotes(type);
 }
 
@@ -131,6 +146,13 @@ int createVar(fstream *infile, ofstream *outfile, string line)
     string Final = "";
     // structure -> ("name: type")
     auto [type, name] = typeNameSeparator(line);
+    if (line.find("hasFieldOfType") != string::npos)
+    {
+        name = line.substr(line.find('"') + 1);
+        name = name.substr(0, name.find('"'));
+        type = line.substr(0, line.find_last_of('"'));
+        type = type.substr(type.find(',') + 3);
+    }
     getline(*infile, line);
     // search for visibility
     switch (protlvl(line))
@@ -209,7 +231,18 @@ int createMethod(fstream *infile, ofstream *outfile, string line)
             paramTypes.push_back(temptype);
             paramNames.push_back(tempname);
         }
-    } // else no params
+    }
+    else if (line.find("hasMethodWithParams") != string::npos)
+    {
+        string temp = line.substr(line.find(',') + 2);
+        vector<string> tempV = split(temp, ", ");
+        for (int i = 0; i < tempV.size(); i++)
+        {
+            paramTypes.push_back(removeQuotes(tempV[i]));
+            paramNames.push_back("todoName");
+        }
+    }
+    // else no params
     for (int i = 0; i < 2; i++)
     {
         getline(*infile, line);
