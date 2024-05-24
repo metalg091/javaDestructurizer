@@ -107,6 +107,33 @@ int createVar(fstream *infile, ofstream *outfile, string line)
         type = type.substr(type.find("of ") + 3) + "[]";
     }
     *outfile << "\t" << vis << Static << Final << type << " " << name << ";\n";
+    getline(*infile, line);
+    if (line.find("thatHas(") != string::npos)
+    {
+        bool hasGetter = false;
+        bool hasSetter = false;
+        if (line.find("GETTER") != string::npos)
+        {
+            hasGetter = true;
+        }
+        if (line.find("SETTER") != string::npos)
+        {
+            hasSetter = true;
+        }
+        if (hasGetter)
+        {
+            *outfile << "\n\t" << "public " << type << " get" << (char)toupper(name[0]) << name.substr(1) << "() {\n";
+            *outfile << "\t\treturn " << name << ";\n";
+            *outfile << "\t}\n";
+        }
+        if (hasSetter)
+        {
+            *outfile << "\n\t" << "public void set" << toupper(name[0]) << name.substr(1) << "(" << type << " " << name << ") {\n";
+            *outfile << "\t\t// TODO\n";
+            *outfile << "\t\tthis." << name << " = " << name << ";\n";
+            *outfile << "\t}\n";
+        }
+    }
     return 0;
 }
 
@@ -197,7 +224,7 @@ int createMethod(fstream *infile, ofstream *outfile, string line)
         }
     }
     *outfile << ") {\n";
-    *outfile << "\t\t// TODO Auto-generated method stub\n";
+    *outfile << "\t\t// TODO\n";
     *outfile << "\t}\n";
     return 0;
 }
@@ -221,7 +248,7 @@ int createConstructor(fstream *infile, ofstream *outfile, string line, string na
             paramTypes.push_back("withArgsSimilarToFields");
             paramNames.push_back("withArgsSimilarToFields");
         }
-        else
+        else if (line.find("withArgs(") != string::npos)
         {
             string temp = line.substr(line.find("withArgs(") + 9);
             temp = temp.substr(0, temp.find(")"));
@@ -241,6 +268,12 @@ int createConstructor(fstream *infile, ofstream *outfile, string line, string na
                 paramTypes.push_back(tempVX);
                 paramNames.push_back(tempV2[0].substr(1, tempV2[0].length()));
             }
+        }
+        else
+        {
+            cout << "**WARNING** Constructor with unimplemented args type\n";
+            paramTypes.push_back("unimplemented");
+            paramNames.push_back("unimplemented");
         }
     } // else no params
     getline(*infile, line);
@@ -268,7 +301,7 @@ int createConstructor(fstream *infile, ofstream *outfile, string line, string na
         }
     }
     *outfile << ") {\n";
-    *outfile << "\t\t// TODO Auto-generated constructor stub\n";
+    *outfile << "\t\t// TODO\n";
     *outfile << "\t}\n";
     return 0;
 }
