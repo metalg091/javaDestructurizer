@@ -512,7 +512,7 @@ int main(int argc, char **args)
             *sfile << vis << "interface " << name << parent << " {\n";
         }
         // search for it.hasMethod it.hasConstructor it.hasField
-        // just seach for the string will call the function later
+        // just search for the string, will call the function later
         while (getline(file, line))
         {
             if (line.find("it.hasMethod") != string::npos)
