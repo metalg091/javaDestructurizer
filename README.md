@@ -11,3 +11,7 @@ This is a tool that converts java structure test (give on java exams in ELTE) to
 # PLEASE REPORT ANY UNCOVERED CASES!!!
 Submit them through github as an issue it makes it easier to handle!
 Also attach the failing test-file!
+
+# Contributing:
+__KEEP IT SIMPLE!__ I'm not very good at coding and if I don't understand what your code does I'm not merging.
+Also do not insult the code or the style in any ways plz!
