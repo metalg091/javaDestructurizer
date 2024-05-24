@@ -372,13 +372,6 @@ int main(int argc, char **args)
     fstream file(args[1]);
     string line;
     string stopString = "public static void init";
-    // fstream file("VariableStructureTest.java");
-    // fstream file("HeuristicStructureTest.java");
-    // fstream file("EqualityConstraintStructureTest.java");
-    // fstream file("BruteForceHeuristicStructureTest.java");
-    // fstream file("ILPSolverStructureTest.java");
-    // fstream file("InequalityConstraintStructureTest.java");
-    // fstream file("ConstraintStructureTest.java");
 
     if (file.is_open())
     {
