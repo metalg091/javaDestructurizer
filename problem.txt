@@ -1,16 +1,13 @@
 # not crashing
-TIME structure test
-text.util.characterStatistics.java
-race.car.SectorTime/WringSectorTimer1/2
-music
-magic.library
-election
+cipther
+hashset support >> structure peculiar StuffyList
+MultiSet support >> structure MultiSet
+election candidate candidate >> weird leftover chars
+loop iterator GoAround >> i don't think this is reasonable to fix
+magic >> still shit
+music >> mess
+car >> int)[] strangeness
+text to numbers characterStatistics
+worker schedule WorkerSchedule
 
 # crashing
-printed.material.*
-printed.material.specific.* # kivéve DamagedBook
-loop.GoAround
-loop.iterator.GoAround
-data
-cafe
-action
