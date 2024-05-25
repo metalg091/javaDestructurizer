@@ -644,11 +644,33 @@ int main(int argc, char **args)
                 // cout << "Field\n";
                 createVar(&file, sfile, line);
             }
-            else if (line.find("it.has(TEXTUAL_REPRESENTATION)") != string::npos)
+            else if (line.find("it.has(TEXTUAL_REPRESENTATION") != string::npos)
             {
                 *sfile << "\t@Override\n";
                 *sfile << "\tpublic String toString() {\n";
                 *sfile << "\t\treturn \"TODO\";\n";
+                *sfile << "\t}\n";
+            }
+            else if (line.find("has(EQUALITY_CHECK") != string::npos)
+            {
+                *sfile << "\t@Override\n";
+                *sfile << "\tpublic boolean equals(Object obj) {\n";
+                *sfile << "\t\t// todo\n";
+                *sfile << "\t\treturn true;\n";
+                *sfile << "\t}\n";
+                // need to overwrite hashCode too
+                *sfile << "\t@Override\n";
+                *sfile << "\tpublic int hashCode() {\n";
+                *sfile << "\t\t// todo\n";
+                *sfile << "\t\treturn 1;\n";
+                *sfile << "\t}\n";
+            }
+            else if (line.find("has(HASH_CODE") != string::npos)
+            {
+                *sfile << "\t@Override\n";
+                *sfile << "\tpublic int hashCode() {\n";
+                *sfile << "\t\t// todo\n";
+                *sfile << "\t\treturn 1;\n";
                 *sfile << "\t}\n";
             }
         }
