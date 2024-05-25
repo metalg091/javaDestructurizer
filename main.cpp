@@ -711,6 +711,28 @@ int main(int argc, char **args)
                 // cout << "Constructor\n";
                 createConstructor(&file, sfile, line, name);
             }
+            else if (line.find("hasNoArgConstructor") != string::npos)
+            {
+                getline(file, line);
+                string vis = "";
+                switch (protlvl(line))
+                {
+                case Public:
+                    vis = "public ";
+                    break;
+                case Protected:
+                    vis = "protected ";
+                    break;
+                case Private:
+                    vis = "private ";
+                    break;
+                case Default:
+                    break;
+                }
+                *sfile << "\t" << vis << name << "() {\n";
+                *sfile << "\t\t// TODO\n";
+                *sfile << "\t}\n";
+            }
             else if (line.find("it.hasField") != string::npos)
             {
                 // cout << "Field\n";
