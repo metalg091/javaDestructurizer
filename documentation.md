@@ -155,8 +155,6 @@ Verify the output Java files manually or write automated scripts to compare the 
 
 ## License
 
-Specify the license under which the file is distributed.
-
 ```
 MIT License
 ```
