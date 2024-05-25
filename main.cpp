@@ -17,15 +17,6 @@ enum ProtectionLevel
     Default
 };
 
-void testNull(size_t pos)
-{
-    if (pos == string::npos)
-    {
-        std::cout << "Not found" << endl;
-        exit(1);
-    }
-}
-
 vector<string> split(string s, string delimiter)
 {
     vector<string> result;
@@ -386,9 +377,12 @@ string concat(vector<string> v, char delimiter)
 std::tuple<ofstream *, string, string> createFile(string line)
 {
     size_t pos = line.find('"');
-    testNull(pos);
     size_t pos2 = line.find('"', pos + 1);
-    testNull(pos2);
+    if (pos == string::npos || pos2 == string::npos)
+    {
+        cout << "Error in createFile\n";
+        exit(1);
+    }
     string className = line.substr(pos + 1, pos2 - pos - 1);
     pos = className.find_last_of('.');
     string name = className.substr(pos + 1);
@@ -427,25 +421,18 @@ int main(int argc, char **args)
 {
     fstream file(args[1]);
     string line;
-    string stopString[2] = {"public void", "public static void"};
-
+    string stopString = "CheckThat.the";
     if (file.is_open())
     {
         bool go = true;
         while (go && getline(file, line)) // first bool else it will skip the first line
         {
-            for (int i = 0; i < 2; i++) // most use constant else segfault
+            if (line.find(stopString) != string::npos)
             {
-                if (line.find(stopString[i]) != string::npos)
-                {
-                    go = false;
-                }
+                go = false;
             }
         }
-        getline(file, line);
-        string properties;
-        size_t pos = line.find('"');
-        testNull(pos);
+        size_t pos; // backwards compatibility, I'm not rewriting the code
         // auto [sfile, name, package] = createFile(line); // only works after c++11
         tuple<ofstream *, string, string> tempTuple = createFile(line);
         ofstream *sfile = get<0>(tempTuple);
