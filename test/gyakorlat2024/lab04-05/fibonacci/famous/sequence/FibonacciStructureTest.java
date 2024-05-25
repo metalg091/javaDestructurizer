@@ -1,3 +1,4 @@
+package test.gyakorlat2024.lab04-05.fibonacci.famous.sequence;
 
 import static check.CheckThat.*;
 import static check.CheckThat.Condition.*;

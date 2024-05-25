@@ -1,3 +1,4 @@
+package test.gyakorlat2024.junit-demo.time;
 
 import static check.CheckThat.*;
 import static check.CheckThat.Condition.*;

@@ -1,3 +1,4 @@
+package test.beadando2024;
 
 import static check.CheckThat.*;
 import static check.CheckThat.Condition.*;

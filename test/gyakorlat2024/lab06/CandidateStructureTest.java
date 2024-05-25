@@ -1,3 +1,4 @@
+package test.gyakorlat2024.lab06;
 import static check.CheckThat.*;
 import static check.CheckThat.Condition.*;
 import org.junit.jupiter.api.*;
