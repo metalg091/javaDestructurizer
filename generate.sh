@@ -5,11 +5,23 @@ if [ -z "$1" ]; then
     echo "No directory provided using default. Usage: ./generate.sh <directory>"
     dir="."
 else
-    dir=$1
+    # manual flag
+    if [[ "manual" == "$1" || "-m" == "$1" || "m" == "$1" ]]; then
+        g++ main.cpp -o generator.out
+        exit 0
+    else
+        dir=$1
+    fi
 fi
 
 # Compile main.cpp
 g++ main.cpp -o generator.out
+
+# Check if compilation was successful
+if [ $? -ne 0 ]; then
+    echo "Compilation failed"
+    exit 1
+fi
 
 # Find files with "StructureTest.java" in their name
 files=$(find "$dir" -name "*StructureTest.java")
@@ -18,7 +30,7 @@ files=$(find "$dir" -name "*StructureTest.java")
 for file in $files; do
     ./generator.out "$file"
     if [ $? -ne 0 ]; then
-        echo "Segfault occurred while processing $file"
+        echo "Error occured $file"
     fi
 done
 # Delete evidence
