@@ -1,8 +1,10 @@
 # Ignore all .out files
 *.out
-
+*.class
 # Ignore all folders
 */
 # except test folder and subfolders (both lines are needed)
 !test/
 !test/**
+# but exclude .class files in test folder
+test/**/*.class
