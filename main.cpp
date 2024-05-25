@@ -102,11 +102,14 @@ string typeMaker(string type)
             key = typeMaker(key.substr(key.find("<") + 1));
             string value = type.substr(type.find(",") + 2);
             value = typeMaker(value.substr(0, value.find(">")));
-            cout << "Key: " << key << " Value: " << value << endl;
-            return type.substr(0, type.find("<") + 1) + key + ", " + value + type.substr(type.find(">"));
+            return removeQuotes(type.substr(0, type.find("<") + 1) + key + ", " + value + type.substr(type.find(">")));
         }
-        return type.substr(0, type.find("<") + 1) + typeMaker(type) + type.substr(type.find(">"));
+        string temp = type.substr(type.find("<"));
+        temp = temp.substr(1, temp.find(">") - 1);
+        return removeQuotes(type.substr(0, type.find("<") + 1) + typeMaker(temp) + type.substr(type.find(">")));
     }
+    cout << type << endl;
+    cout << removeQuotes(type) << endl;
     return removeQuotes(type);
 }
 
