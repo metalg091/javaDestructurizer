@@ -94,6 +94,19 @@ string typeMaker(string type)
     {
         type = type.substr(0, type.find("of ") - 1) + "<" + type.substr(type.find("of ") + 3) + ">";
     }
+    if (type.find("of ") != string::npos && type.find("<") != string::npos && type.find(">") != string::npos)
+    {
+        if (type.find(",") != string::npos)
+        {
+            string key = type.substr(0, type.find(","));
+            key = typeMaker(key.substr(key.find("<") + 1));
+            string value = type.substr(type.find(",") + 2);
+            value = typeMaker(value.substr(0, value.find(">")));
+            cout << "Key: " << key << " Value: " << value << endl;
+            return type.substr(0, type.find("<") + 1) + key + ", " + value + type.substr(type.find(">"));
+        }
+        return type.substr(0, type.find("<") + 1) + typeMaker(type) + type.substr(type.find(">"));
+    }
     return removeQuotes(type);
 }
 
