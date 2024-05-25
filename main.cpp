@@ -9,6 +9,19 @@
 
 using namespace std; // for some reason it started to require std:: but don't remove, it could break the code
 
+// declarations:
+vector<string> split(string s, string delimiter);
+string protlvl(string line);
+string removeQuotes(string line);
+string typeMaker(string type);
+pair<string, string> typeNameSeparator(string line);
+int createVar(fstream *infile, ofstream *outfile, string line);
+int createMethod(fstream *infile, ofstream *outfile, string line);
+int createConstructor(fstream *infile, ofstream *outfile, string line, string name);
+string concat(vector<string> v, char delimiter);
+std::tuple<ofstream *, string, string, string> createFile(string line);
+
+// I know its bad practice but this far into the project I'm not passing arguments through twelve functions
 bool isInterface = false;
 set<string> imports;
 
@@ -34,24 +47,24 @@ vector<string> split(string s, string delimiter)
     return result;
 }
 
-ProtectionLevel protlvl(string line) // 1 == true, 0 == false
+string protlvl(string line) // 1 == true, 0 == false
 {
     // search for VISIBLE_TO_ALL VISIBLE_TO_SUBCLASSES VISIBLE_TO_NONE
     if (line.find("VISIBLE_TO_ALL") != string::npos)
     {
-        return Public;
+        return "public ";
     }
     else if (line.find("VISIBLE_TO_SUBCLASSES") != string::npos)
     {
-        return Protected;
+        return "protected ";
     }
     else if (line.find("VISIBLE_TO_NONE") != string::npos)
     {
-        return Private;
+        return "private ";
     }
     else
     {
-        return Default;
+        return "";
     }
 }
 
@@ -175,21 +188,7 @@ int createVar(fstream *infile, ofstream *outfile, string line)
     }
     getline(*infile, line);
     // search for visibility
-    switch (protlvl(line))
-    {
-    case Public:
-        vis = "public ";
-        break;
-    case Protected:
-        vis = "protected ";
-        break;
-    case Private:
-        vis = "private ";
-        break;
-    case Default:
-
-        break;
-    }
+    vis = protlvl(line);
     if (line.find("USABLE_WITHOUT_INSTANCE") != string::npos)
     {
         Static = "static ";
@@ -215,13 +214,13 @@ int createVar(fstream *infile, ofstream *outfile, string line)
         }
         if (hasGetter)
         {
-            *outfile << "\n\t" << "public " << type << " get" << (char)toupper(name[0]) << name.substr(1) << "() {\n";
+            *outfile << "\n\t" << "public " << type << " get" << static_cast<char>(toupper(name[0])) << name.substr(1) << "() {\n";
             *outfile << "\t\treturn " << name << ";\n";
             *outfile << "\t}\n";
         }
         if (hasSetter)
         {
-            *outfile << "\n\t" << "public void set" << (char)toupper(name[0]) << name.substr(1) << "(" << type << " " << name << ") {\n";
+            *outfile << "\n\t" << "public void set" << static_cast<char>(toupper(name[0])) << name.substr(1) << "(" << type << " " << name << ") {\n";
             *outfile << "\t\t// TODO\n";
             *outfile << "\t\tthis." << name << " = " << name << ";\n";
             *outfile << "\t}\n";
@@ -245,7 +244,7 @@ int createMethod(fstream *infile, ofstream *outfile, string line)
         string temp = line.substr(line.find("withParams(") + 11);
         temp = temp.substr(0, temp.find(")"));
         vector<string> tempV = split(temp, ", ");
-        for (int i = 0; i < tempV.size(); i++)
+        for (size_t i = 0; i < tempV.size(); i++)
         {
             // auto [temptype, tempname] = typeNameSeparator(tempV[i]); // only works after c++11
             pair<string, string> tempPair = typeNameSeparator(tempV[i]);
@@ -263,7 +262,7 @@ int createMethod(fstream *infile, ofstream *outfile, string line)
     {
         string temp = line.substr(line.find(',') + 2);
         vector<string> tempV = split(temp, ", ");
-        for (int i = 0; i < tempV.size(); i++)
+        for (size_t i = 0; i < tempV.size(); i++)
         {
             paramTypes.push_back(typeMaker(tempV[i]));
             paramNames.push_back("todoName" + to_string(i));
@@ -274,20 +273,7 @@ int createMethod(fstream *infile, ofstream *outfile, string line)
         getline(*infile, line);
         if (line.find("thatIs(") != string::npos)
         {
-            switch (protlvl(line))
-            {
-            case Public:
-                vis = "public ";
-                break;
-            case Protected:
-                vis = "protected ";
-                break;
-            case Private:
-                vis = "private ";
-                break;
-            case Default:
-                break;
-            }
+            vis = protlvl(line);
             if (line.find("USABLE_WITHOUT_INSTANCE") != string::npos)
             {
                 Static = "static ";
@@ -308,7 +294,7 @@ int createMethod(fstream *infile, ofstream *outfile, string line)
         }
     }
     *outfile << "\t" << vis << Static << returnType << " " << name << "(";
-    for (int i = 0; i < paramTypes.size(); i++)
+    for (size_t i = 0; i < paramTypes.size(); i++)
     {
         *outfile << paramTypes[i] << " " << paramNames[i];
         if (i != paramTypes.size() - 1)
@@ -391,7 +377,7 @@ int createConstructor(fstream *infile, ofstream *outfile, string line, string na
             string temp = line.substr(line.find("withArgs(") + 9);
             temp = temp.substr(0, temp.find(")"));
             vector<string> tempV = split(temp, ", ");
-            for (int i = 0; i < tempV.size(); i++)
+            for (size_t i = 0; i < tempV.size(); i++)
             {
                 // auto [temptype, tempname] = typeNameSeparator(tempV[i]); // only works after c++11
                 pair<string, string> tempPair = typeNameSeparator(tempV[i]);
@@ -409,22 +395,9 @@ int createConstructor(fstream *infile, ofstream *outfile, string line, string na
         }
     } // else no params
     getline(*infile, line);
-    switch (protlvl(line))
-    {
-    case Public:
-        vis = "public ";
-        break;
-    case Protected:
-        vis = "protected ";
-        break;
-    case Private:
-        vis = "private ";
-        break;
-    case Default:
-        break;
-    }
+    vis = protlvl(line);
     *outfile << "\t" << vis << name << "(";
-    for (int i = 0; i < paramTypes.size(); i++)
+    for (size_t i = 0; i < paramTypes.size(); i++)
     {
         *outfile << paramTypes[i] << " " << paramNames[i];
         if (i != paramTypes.size() - 1)
@@ -441,7 +414,7 @@ int createConstructor(fstream *infile, ofstream *outfile, string line, string na
 string concat(vector<string> v, char delimiter)
 {
     string result;
-    for (int i = 0; i < v.size(); i++)
+    for (size_t i = 0; i < v.size(); i++)
     {
         result += v[i];
         if (i != v.size() - 1)
@@ -467,7 +440,7 @@ std::tuple<ofstream *, string, string, string> createFile(string line)
     vector<string> package = split(className.substr(0, pos), ".");
     // create file
     string place;
-    for (int i = 0; i < package.size(); i++)
+    for (size_t i = 0; i < package.size(); i++)
     {
         place += package[i];
         place += "/";
@@ -483,7 +456,7 @@ std::tuple<ofstream *, string, string, string> createFile(string line)
         exit(1);
     }
     *file << "package ";
-    for (int i = 0; i < package.size(); i++)
+    for (size_t i = 0; i < package.size(); i++)
     {
         *file << package[i];
         if (i != package.size() - 1)
@@ -497,6 +470,11 @@ std::tuple<ofstream *, string, string, string> createFile(string line)
 
 int main(int argc, char **args)
 {
+    if (argc != 2)
+    {
+        cout << "Usage: " << args[0] << " <input file>" << endl;
+        exit(1);
+    }
     fstream file(args[1]);
     string line;
     string stopString = "CheckThat.the";
@@ -560,21 +538,7 @@ int main(int argc, char **args)
                 }
             }
             getline(file, line);
-            string vis;
-            switch (protlvl(line))
-            {
-            case Public:
-                vis = "public ";
-                break;
-            case Protected:
-                vis = "protected ";
-                break;
-            case Private:
-                vis = "private ";
-                break;
-            case Default:
-                break;
-            }
+            string vis = protlvl(line);
             if (parent.find("of ") != string::npos)
             {
                 parent = typeMaker(parent);
@@ -602,41 +566,13 @@ int main(int argc, char **args)
                 }
             }
             getline(file, line);
-            string vis;
-            switch (protlvl(line))
-            {
-            case Public:
-                vis = "public ";
-                break;
-            case Protected:
-                vis = "protected ";
-                break;
-            case Private:
-                vis = "private ";
-                break;
-            case Default:
-                break;
-            }
+            string vis = protlvl(line);
             *sfile << vis << "interface " << name << parent << " {\n";
         }
         else if (line.find("theEnum") != string::npos)
         {
             getline(file, line);
-            string vis;
-            switch (protlvl(line))
-            {
-            case Public:
-                vis = "public ";
-                break;
-            case Protected:
-                vis = "protected ";
-                break;
-            case Private:
-                vis = "private ";
-                break;
-            case Default:
-                break;
-            }
+            string vis = protlvl(line);
             *sfile << vis << "enum " << name << " {\n";
             getline(file, line);
             if (line.find("hasEnumElements") != string::npos)
@@ -644,7 +580,7 @@ int main(int argc, char **args)
                 string temp = line.substr(line.find("hasEnumElements(") + 16);
                 temp = temp.substr(0, temp.find(")"));
                 vector<string> tempV = split(temp, ", ");
-                for (int i = 0; i < tempV.size(); i++)
+                for (size_t i = 0; i < tempV.size(); i++)
                 {
                     *sfile << "\t" << removeQuotes(tempV[i]);
                     if (i != tempV.size() - 1)
@@ -657,21 +593,7 @@ int main(int argc, char **args)
         else if (line.find("theCheckedException") != string::npos)
         {
             getline(file, line);
-            string vis;
-            switch (protlvl(line))
-            {
-            case Public:
-                vis = "public ";
-                break;
-            case Protected:
-                vis = "protected ";
-                break;
-            case Private:
-                vis = "private ";
-                break;
-            case Default:
-                break;
-            }
+            string vis = protlvl(line);
             *sfile << vis << "class " << name << " extends Exception {\n";
         }
         else
@@ -694,21 +616,7 @@ int main(int argc, char **args)
             else if (line.find("hasNoArgConstructor") != string::npos)
             {
                 getline(file, line);
-                string vis = "";
-                switch (protlvl(line))
-                {
-                case Public:
-                    vis = "public ";
-                    break;
-                case Protected:
-                    vis = "protected ";
-                    break;
-                case Private:
-                    vis = "private ";
-                    break;
-                case Default:
-                    break;
-                }
+                string vis = protlvl(line);
                 *sfile << "\t" << vis << name << "() {\n";
                 *sfile << "\t\t// TODO\n";
                 *sfile << "\t}\n";
@@ -763,7 +671,7 @@ int main(int argc, char **args)
     vector<string> fileLines;
     if (file2.is_open())
     {
-        string line;
+        line = "";
         while (getline(file2, line))
         {
             fileLines.push_back(line);
@@ -785,7 +693,7 @@ int main(int argc, char **args)
         std::cout << "Unable to open file";
     }
     ofstream file3(outfilename);
-    for (int i = 0; i < fileLines.size(); i++)
+    for (size_t i = 0; i < fileLines.size(); i++)
     {
         file3 << fileLines[i] << endl;
     }
