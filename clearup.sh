@@ -8,3 +8,8 @@ for dir in ./*; do
         rm -rf "$dir"
     fi
 done
+
+# Remove all .class files
+find . -name "*.class" | while read -r file; do
+    rm $file
+done

@@ -45,6 +45,36 @@ echo "##########################################################################
 # Delete evidence
 rm generator.out
 
+# Ask for Test
+echo "Do you want to run the tests? (y/N)"
+read -r response
+if [ "$response" = "y" ]; then
+    # create an array for compilation errors
+    errors=()
+    # Compile the files for testing with javac excluding the test directory
+    find "." -name "*.java" -not -path "*/test/*" -exec javac {} \;
+    # Check if compilation was successful and add to errors array if not
+    if [ $? -ne 0 ]; then
+        errors+=("$file")
+    fi
+    # Print errors
+    if [ ${#errors[@]} -ne 0 ]; then
+        echo "Errors occured while compiling the following files:"
+        for error in "${errors[@]}"; do
+            echo "$error"
+        done
+    fi
+    # Run all Structure tests
+    # They are run by ./check.cmd path/to/StructureTest.java path.to.StructureTest
+    for file in $files; do
+        # replace / with . and remove .java
+        package=${file%.java}
+        package=$(echo $package | sed 's/\//./g')
+        read -r canIgo
+        ./check.cmd "$file" "$package"
+    done
+fi
+
 # Ask for cleanup
 echo "Do you want to clean up the directory? (yes/No)"
 read -r response

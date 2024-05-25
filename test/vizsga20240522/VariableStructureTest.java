@@ -1,3 +1,5 @@
+package test.vizsga20240522;
+
 import static check.CheckThat.*;
 import static check.CheckThat.Condition.*;
 import org.junit.jupiter.api.*;

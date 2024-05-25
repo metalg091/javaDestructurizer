@@ -1,4 +1,4 @@
-package aoe.game.tests;
+package test.vizsga20240524;
 
 import static check.CheckThat.*;
 import static check.CheckThat.Condition.*;

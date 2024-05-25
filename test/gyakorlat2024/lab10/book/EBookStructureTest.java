@@ -1,4 +1,4 @@
-package book;
+package test.gyakorlat2024.lab10.book;
 
 import static check.CheckThat.*;
 import static check.CheckThat.Condition.*;

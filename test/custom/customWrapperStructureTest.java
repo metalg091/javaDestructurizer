@@ -1,9 +1,12 @@
+package test.custom;
+
 import static check.CheckThat.*;
 import static check.CheckThat.Condition.*;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.condition.*;
 import check.CheckThat;
 
-public class WorkerScheduleStructureTest {
+public class customWrapperStructureTest {
     @BeforeAll
     public static void init() {
         CheckThat.theClass("wrapper.multi.MultiWrapper")
@@ -23,13 +26,13 @@ public class WorkerScheduleStructureTest {
             .thatHasNo(GETTER, SETTER);
     }
     @Test
-    public void fieldWeekToWorkers() {
+    public void fieldWeekToWorkerswtf() {
         it.hasFieldOfType("wtf", "List of ArrayList of HashSet of String")
             .thatIs(INSTANCE_LEVEL, MODIFIABLE, VISIBLE_TO_NONE)
             .thatHasNo(GETTER, SETTER);
     }
     @Test
-    public void fieldWeekToWorkers() {
+    public void fieldWeekToWorkersliststring() {
         it.hasFieldOfType("liststring", "List of String")
             .thatIs(INSTANCE_LEVEL, MODIFIABLE, VISIBLE_TO_NONE)
             .thatHasNo(GETTER, SETTER);

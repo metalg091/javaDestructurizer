@@ -1,4 +1,4 @@
-package cafe;
+package test.gyakorlat2024.lab10.cafe;
 
 import static check.CheckThat.*;
 import static check.CheckThat.Condition.*;
