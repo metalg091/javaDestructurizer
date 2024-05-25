@@ -500,11 +500,19 @@ int main(int argc, char **args)
             {
                 for (int i = 0; i < imports.size(); i++)
                 {
+                    if (imports[i].find("of ") != string::npos)
+                    {
+                        continue;
+                    }
                     *sfile << "import ";
                     *sfile << imports[i];
                     *sfile << ";\n";
                 }
                 *sfile << "\n";
+            }
+            if (parent.find("of ") != string::npos)
+            {
+                parent = typeMaker(parent);
             }
             *sfile << vis << "class " << name << parent << interface << " {\n";
         }
