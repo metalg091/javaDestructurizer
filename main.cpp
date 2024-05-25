@@ -8,6 +8,8 @@
 
 using namespace std; // for some reason it started to require std:: but don't remove, it could break the code
 
+bool isInterface = false;
+
 // using capital letters to avoid conflict
 enum ProtectionLevel
 {
@@ -240,6 +242,10 @@ int createMethod(fstream *infile, ofstream *outfile, string line)
             pair<string, string> tempPair = typeNameSeparator(tempV[i]);
             string temptype = tempPair.first;
             string tempname = tempPair.second;
+            if (tempname == "todoName")
+            {
+                tempname = "todoName" + to_string(i);
+            }
             paramTypes.push_back(temptype);
             paramNames.push_back(tempname);
         }
@@ -251,10 +257,9 @@ int createMethod(fstream *infile, ofstream *outfile, string line)
         for (int i = 0; i < tempV.size(); i++)
         {
             paramTypes.push_back(typeMaker(tempV[i]));
-            paramNames.push_back("todoName");
+            paramNames.push_back("todoName" + to_string(i));
         }
-    }
-    // else no params
+    } // else no params
     for (int i = 0; i < 2; i++)
     {
         getline(*infile, line);
@@ -302,8 +307,53 @@ int createMethod(fstream *infile, ofstream *outfile, string line)
             *outfile << ", ";
         }
     }
-    *outfile << ") {\n";
+    *outfile << ")";
+    if (isInterface) // interfaces don't have bodies
+    {
+        *outfile << ";\n";
+        return 0;
+    }
+    *outfile << " {\n";
     *outfile << "\t\t// TODO\n";
+    if (returnType != "void")
+    {
+        if (returnType == "int")
+        {
+            *outfile << "\t\treturn 0;\n";
+        }
+        else if (returnType == "double")
+        {
+            *outfile << "\t\treturn 0.0;\n";
+        }
+        else if (returnType == "float")
+        {
+            *outfile << "\t\treturn 0.0f;\n";
+        }
+        else if (returnType == "long")
+        {
+            *outfile << "\t\treturn 0L;\n";
+        }
+        else if (returnType == "char")
+        {
+            *outfile << "\t\treturn '0';\n";
+        }
+        else if (returnType == "byte")
+        {
+            *outfile << "\t\treturn (byte)0;\n";
+        }
+        else if (returnType == "short")
+        {
+            *outfile << "\t\treturn (short)0;\n";
+        }
+        else if (returnType == "boolean")
+        {
+            *outfile << "\t\treturn false;\n";
+        }
+        else
+        {
+            *outfile << "\t\treturn null;\n";
+        }
+    }
     *outfile << "\t}\n";
     return 0;
 }
@@ -460,6 +510,8 @@ int main(int argc, char **args)
         *sfile << endl;
         bool needImport = false;
         vector<string> imports;
+        needImport = true;
+        imports.push_back("java.util.*");
         if (line.find("theClass") != string::npos)
         {
             string parent = "";
@@ -537,6 +589,7 @@ int main(int argc, char **args)
         }
         else if (line.find("theInterface") != string::npos)
         {
+            isInterface = true;
             string parent = "";
             string s = "withParent(\"";
             pos = line.find(s);
