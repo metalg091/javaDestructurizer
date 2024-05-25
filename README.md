@@ -1,4 +1,4 @@
-# Java Structurizer
+# Java Destructurizer
 This is a tool that converts java structure test (give on java exams in ELTE) to the skeleton of the java Project. It:
   - creates the files
   - sets packages
