@@ -61,11 +61,6 @@ Defines the visibility levels for class members: (This should be rewritten)
 - `Private`
 - `Default`
 
-### `void testNull(size_t pos)`
-
-Checks if a position is `string::npos` and exits the program if true.
-Use in cases where the program can't continue when encountering this thing.
-
 ### `vector<string> split(string s, string delimiter)`
 
 Splits a string `s` into a vector of substrings based on the specified `delimiter`.
