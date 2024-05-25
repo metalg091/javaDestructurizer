@@ -141,7 +141,10 @@ int createVar(fstream *infile, ofstream *outfile, string line)
     string Static = "";
     string Final = "";
     // structure -> ("name: type")
-    auto [type, name] = typeNameSeparator(line);
+    // auto [type, name] = typeNameSeparator(line); // only works after c++11
+    pair<string, string> temp = typeNameSeparator(line);
+    string type = temp.first;
+    string name = temp.second;
     if (line.find("hasFieldOfType") != string::npos)
     {
         name = line.substr(line.find('"') + 1);
@@ -223,7 +226,10 @@ int createMethod(fstream *infile, ofstream *outfile, string line)
         vector<string> tempV = split(temp, ", ");
         for (int i = 0; i < tempV.size(); i++)
         {
-            auto [temptype, tempname] = typeNameSeparator(tempV[i]);
+            // auto [temptype, tempname] = typeNameSeparator(tempV[i]); // only works after c++11
+            pair<string, string> tempPair = typeNameSeparator(tempV[i]);
+            string temptype = tempPair.first;
+            string tempname = tempPair.second;
             paramTypes.push_back(temptype);
             paramNames.push_back(tempname);
         }
@@ -318,7 +324,10 @@ int createConstructor(fstream *infile, ofstream *outfile, string line, string na
             vector<string> tempV = split(temp, ", ");
             for (int i = 0; i < tempV.size(); i++)
             {
-                auto [temptype, tempname] = typeNameSeparator(tempV[i]);
+                // auto [temptype, tempname] = typeNameSeparator(tempV[i]); // only works after c++11
+                pair<string, string> tempPair = typeNameSeparator(tempV[i]);
+                string temptype = tempPair.first;
+                string tempname = tempPair.second;
                 paramTypes.push_back(temptype);
                 paramNames.push_back(tempname);
             }
@@ -437,7 +446,11 @@ int main(int argc, char **args)
         string properties;
         size_t pos = line.find('"');
         testNull(pos);
-        auto [sfile, name, package] = createFile(line);
+        // auto [sfile, name, package] = createFile(line); // only works after c++11
+        tuple<ofstream *, string, string> tempTuple = createFile(line);
+        ofstream *sfile = get<0>(tempTuple);
+        string name = get<1>(tempTuple);
+        string package = get<2>(tempTuple);
         *sfile << endl;
         bool needImport = false;
         vector<string> imports;
