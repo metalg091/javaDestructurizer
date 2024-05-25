@@ -5,12 +5,12 @@
 #include <cstdlib>
 #include <utility>
 #include <tuple>
+#include <set>
 
 using namespace std; // for some reason it started to require std:: but don't remove, it could break the code
 
 bool isInterface = false;
-vector<string> imports;
-bool nothasUtil = true;
+set<string> imports;
 
 // using capital letters to avoid conflict
 enum ProtectionLevel
@@ -83,11 +83,7 @@ string typeMaker(string type)
     }
     else if (type.find("HashMap of ") != string::npos)
     {
-        if (nothasUtil)
-        {
-            imports.push_back("java.util.*");
-            nothasUtil = false;
-        }
+        imports.insert("java.util.*");
         string temp = type.substr(type.find("of ") + 3);
         string key = temp.substr(0, temp.find(" to "));
         string value = temp.substr(temp.find(" to ") + 4);
@@ -95,11 +91,7 @@ string typeMaker(string type)
     }
     else if (type.find("of ") != string::npos) // try to autocomplete unimplemented types
     {
-        if (nothasUtil)
-        {
-            imports.push_back("java.util.*");
-            nothasUtil = false;
-        }
+        imports.insert("java.util.*");
         type = type.substr(0, type.find("of ") - 1) + "<" + type.substr(type.find("of ") + 3) + ">";
     }
     if (type.find("of ") != string::npos)
@@ -130,7 +122,7 @@ string typeMaker(string type)
     else if (type.find(".") != string::npos && type.find("...") == string::npos)
     {
         string imp = type.substr(0, type.find_last_of('.'));
-        imports.push_back(imp);
+        imports.insert(imp);
         type = type.substr(type.find_last_of('.') + 1);
     }
     return removeQuotes(type);
@@ -526,7 +518,6 @@ int main(int argc, char **args)
         string name = get<1>(tempTuple);
         string package = get<2>(tempTuple);
         outfilename = get<3>(tempTuple);
-        // imports.push_back("java.util.*");
         if (line.find("theClass") != string::npos)
         {
             string parent = "";
@@ -543,9 +534,13 @@ int main(int argc, char **args)
                 pos = tempparent.find_last_of('.');
                 parent += tempparent.substr(pos + 1);
                 tempparent = tempparent.substr(0, pos);
-                if (tempparent != package)
+                if (tempparent != package && tempparent.find("of ") == string::npos)
                 {
-                    imports.push_back(tempparent);
+                    imports.insert(tempparent);
+                }
+                else if (tempparent.find("of ") != string::npos)
+                {
+                    typeMaker(tempparent); // this will add necessary imports
                 }
             }
             s = "withInterface(\"";
@@ -561,7 +556,7 @@ int main(int argc, char **args)
                 tempinterface = tempinterface.substr(0, pos);
                 if (tempinterface != package)
                 {
-                    imports.push_back(tempinterface);
+                    imports.insert(tempinterface);
                 }
             }
             getline(file, line);
@@ -603,7 +598,7 @@ int main(int argc, char **args)
                 tempparent = tempparent.substr(0, pos);
                 if (tempparent != package)
                 {
-                    imports.push_back(tempparent);
+                    imports.insert(tempparent);
                 }
             }
             getline(file, line);
@@ -761,6 +756,8 @@ int main(int argc, char **args)
     {
         std::cout << "Unable to open file";
     }
+    // Make vector unique
+
     // Open the output file again to add imports
     fstream file2(outfilename, ios::in);
     vector<string> fileLines;
@@ -773,9 +770,9 @@ int main(int argc, char **args)
             if (line.find("package ") != string::npos)
             {
                 fileLines.push_back("");
-                for (int j = 0; j < imports.size(); j++)
+                for (string imp : imports)
                 {
-                    string temp = "import " + imports[j] + ";";
+                    string temp = "import " + imp + ";";
                     fileLines.push_back(temp);
                 }
                 fileLines.push_back("");
