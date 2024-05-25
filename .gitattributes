@@ -1,1 +1,3 @@
 test/** linguist-vendored
+check.cmd linguist-vendored
+*.jar linguist-vendored
