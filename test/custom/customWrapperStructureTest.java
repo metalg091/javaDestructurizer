@@ -6,7 +6,7 @@ import check.CheckThat;
 public class WorkerScheduleStructureTest {
     @BeforeAll
     public static void init() {
-        CheckThat.theClass("worker.schedule.WorkerSchedule")
+        CheckThat.theClass("wrapper.multi.MultiWrapper")
             .thatIs(FULLY_IMPLEMENTED, INSTANCE_LEVEL, VISIBLE_TO_ALL);
     }
 
@@ -51,14 +51,14 @@ public class WorkerScheduleStructureTest {
 
     @Test
     public void methodIsWorkingOnWeek() {
-        it.hasMethodWithParams("isWorkingOnWeek", "String", "int")
+        it.hasMethodWithParams("isWorkingOnWeek", "array of array of String", "int")
             .thatIs(FULLY_IMPLEMENTED, INSTANCE_LEVEL, VISIBLE_TO_ALL)
             .thatReturns("boolean");
     }
 
     @Test
     public void methodGetWorkWeeks() {
-        it.hasMethodWithParams("getWorkWeeks", "String")
+        it.hasMethodWithParams("getWorkWeeks", "vararg of array of String")
             .thatIs(FULLY_IMPLEMENTED, INSTANCE_LEVEL, VISIBLE_TO_ALL)
             .thatReturns("HashSet of Integer");
     }
