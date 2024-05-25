@@ -31,6 +31,7 @@ The input file path should be provided as a command-line argument when running t
 - `<cstdlib>`
 - `<utility>`
 - `<tuple>`
+- `<set>`
 
 These standard libraries are used for basic input/output operations, file handling, string manipulation, and other fundamental tasks.
 
@@ -52,26 +53,22 @@ g++ -o code_generator main.cpp
 
 ## Functions / Classes
 
-### `enum ProtectionLevel`
+### Global Variables:
 
-Defines the visibility levels for class members: (This should be rewritten)
-
-- `Public`
-- `Protected`
-- `Private`
-- `Default`
+- #### `bool isInterface` => to avoid giving body to interface functions
+- #### `vector<string> imports` => to be able to add imports anywhere (imports are added last)
 
 ### `vector<string> split(string s, string delimiter)`
 
 Splits a string `s` into a vector of substrings based on the specified `delimiter`.
 
-### `ProtectionLevel protlvl(string line)`
+### `string protlvl(string line)`
 
-Determines the protection level from a given line of text. (This should return a string instead)
+Determines the protection level from a given line of text and returns a string representation of it.
 
 ### `string removeQuotes(string line)`
 
-Removes quotes from a given string.
+Recursively removes quotes from a given string.
 
 ### `string typeMaker(string type)`
 
@@ -98,9 +95,9 @@ Creates a constructor declaration in the output Java file based on the input lin
 
 Concatenates elements of a vector into a single string with the specified delimiter.
 
-### `std::tuple<ofstream *, string, string> createFile(string line)`
+### `std::tuple<ofstream *, string, string, string> createFile(string line)`
 
-Creates a new Java file based on the input line and returns a tuple containing the file stream, class name, and package name.
+Creates a new Java file based on the input line and returns a tuple containing the file stream, class name, package name and file name.
 
 ### `int main(int argc, char **args)`
 

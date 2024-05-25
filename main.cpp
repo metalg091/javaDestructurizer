@@ -25,15 +25,6 @@ std::tuple<ofstream *, string, string, string> createFile(string line);
 bool isInterface = false;
 set<string> imports;
 
-// using capital letters to avoid conflict
-enum ProtectionLevel
-{
-    Public,
-    Protected,
-    Private,
-    Default
-};
-
 vector<string> split(string s, string delimiter)
 {
     vector<string> result;
