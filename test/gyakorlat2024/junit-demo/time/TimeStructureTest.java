@@ -1,4 +1,3 @@
-package time;
 
 import static check.CheckThat.*;
 import static check.CheckThat.Condition.*;

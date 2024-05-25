@@ -1,4 +1,3 @@
-package aoe.game.tests;
 
 import static check.CheckThat.*;
 import static check.CheckThat.Condition.*;
