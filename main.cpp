@@ -79,22 +79,18 @@ string removeQuotes(string line)
 // check for list and arrays (never seen a set or map in a test) => there is a map in one of the tests
 string typeMaker(string type)
 {
-
-    if (type.find("List of ") != string::npos)
+    if (type.find(')') != string::npos)
     {
-        type = "List<" + type.substr(type.find("of ") + 3) + ">";
+        type = type.substr(0, type.find(')'));
     }
-    else if (type.find("array of ") != string::npos)
+    // don't need to write List or HashSet, they are simple types
+    if (type.find("array of ") != string::npos)
     {
         type = type.substr(type.find("of ") + 3) + "[]";
     }
     else if (type.find("vararg of ") != string::npos)
     {
         type = type.substr(type.find("of ") + 3) + "...";
-    }
-    else if (type.find("HashSet of ") != string::npos)
-    {
-        type = "HashSet<" + type.substr(type.find("of ") + 3) + ">";
     }
     else if (type.find("HashMap of ") != string::npos)
     {
@@ -103,9 +99,9 @@ string typeMaker(string type)
         string value = temp.substr(temp.find(" to ") + 4);
         type = "HashMap<" + key + ", " + value + ">";
     }
-    else if (type.find("MultiSet of ") != string::npos)
+    else if (type.find("of ") != string::npos) // try to autocomplete unimplemented types
     {
-        type = "MultiSet<" + type.substr(type.find("of ") + 3) + ">";
+        type = type.substr(0, type.find("of ") - 1) + "<" + type.substr(type.find("of ") + 3) + ">";
     }
     return removeQuotes(type);
 }
@@ -238,7 +234,7 @@ int createMethod(fstream *infile, ofstream *outfile, string line)
         vector<string> tempV = split(temp, ", ");
         for (int i = 0; i < tempV.size(); i++)
         {
-            paramTypes.push_back(removeQuotes(tempV[i]));
+            paramTypes.push_back(typeMaker(tempV[i]));
             paramNames.push_back("todoName");
         }
     }
@@ -508,7 +504,7 @@ int main(int argc, char **args)
                     *sfile << imports[i];
                     *sfile << ";\n";
                 }
-                *sfile << ";\n";
+                *sfile << "\n";
             }
             *sfile << vis << "class " << name << parent << interface << " {\n";
         }
@@ -540,7 +536,7 @@ int main(int argc, char **args)
                     *sfile << imports[i];
                     *sfile << ";\n";
                 }
-                *sfile << ";\n";
+                *sfile << "\n";
             }
             getline(file, line);
             string vis;
@@ -639,6 +635,13 @@ int main(int argc, char **args)
             {
                 // cout << "Field\n";
                 createVar(&file, sfile, line);
+            }
+            else if (line.find("it.has(TEXTUAL_REPRESENTATION)") != string::npos)
+            {
+                *sfile << "\t@Override\n";
+                *sfile << "\tpublic String toString() {\n";
+                *sfile << "\t\treturn \"TODO\";\n";
+                *sfile << "\t}\n";
             }
         }
         *sfile << "\n}";
