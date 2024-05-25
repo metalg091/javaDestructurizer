@@ -33,12 +33,14 @@ fi
 files=$(find "$dir" -name "*StructureTest.java")
 
 # Call the binary with each file as a parameter
+echo "################################################################################"
 for file in $files; do
     ./generator.out "$file"
     if [ $? -ne 0 ]; then
         echo "Error occured $file"
     fi
 done
+echo "################################################################################"
 
 # Delete evidence
 rm generator.out
