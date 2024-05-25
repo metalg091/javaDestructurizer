@@ -9,6 +9,8 @@
 using namespace std; // for some reason it started to require std:: but don't remove, it could break the code
 
 bool isInterface = false;
+vector<string> imports;
+bool nothasUtil = true;
 
 // using capital letters to avoid conflict
 enum ProtectionLevel
@@ -81,6 +83,11 @@ string typeMaker(string type)
     }
     else if (type.find("HashMap of ") != string::npos)
     {
+        if (nothasUtil)
+        {
+            imports.push_back("java.util.*");
+            nothasUtil = false;
+        }
         string temp = type.substr(type.find("of ") + 3);
         string key = temp.substr(0, temp.find(" to "));
         string value = temp.substr(temp.find(" to ") + 4);
@@ -88,6 +95,11 @@ string typeMaker(string type)
     }
     else if (type.find("of ") != string::npos) // try to autocomplete unimplemented types
     {
+        if (nothasUtil)
+        {
+            imports.push_back("java.util.*");
+            nothasUtil = false;
+        }
         type = type.substr(0, type.find("of ") - 1) + "<" + type.substr(type.find("of ") + 3) + ">";
     }
     if (type.find("of ") != string::npos)
@@ -115,6 +127,12 @@ string typeMaker(string type)
             return typeMaker(type.substr(type.find("of ") + 3) + "[]");
         }
     }
+    else if (type.find(".") != string::npos && type.find("...") == string::npos)
+    {
+        string imp = type.substr(0, type.find_last_of('.'));
+        imports.push_back(imp);
+        type = type.substr(type.find_last_of('.') + 1);
+    }
     return removeQuotes(type);
 }
 
@@ -141,7 +159,6 @@ pair<string, string> typeNameSeparator(string line)
         }
         else
         {
-            // cout << line << endl;
             return make_pair(typeMaker(line), "todoName");
         }
     }
@@ -443,7 +460,7 @@ string concat(vector<string> v, char delimiter)
     return result;
 }
 
-std::tuple<ofstream *, string, string> createFile(string line)
+std::tuple<ofstream *, string, string, string> createFile(string line)
 {
     size_t pos = line.find('"');
     size_t pos2 = line.find('"', pos + 1);
@@ -483,7 +500,7 @@ std::tuple<ofstream *, string, string> createFile(string line)
         }
     }
     *file << ";\n";
-    return make_tuple(file, name, concat(package, '.'));
+    return make_tuple(file, name, concat(package, '.'), place);
 }
 
 int main(int argc, char **args)
@@ -491,6 +508,7 @@ int main(int argc, char **args)
     fstream file(args[1]);
     string line;
     string stopString = "CheckThat.the";
+    string outfilename;
     if (file.is_open())
     {
         bool go = true;
@@ -503,15 +521,12 @@ int main(int argc, char **args)
         }
         size_t pos; // backwards compatibility, I'm not rewriting the code
         // auto [sfile, name, package] = createFile(line); // only works after c++11
-        tuple<ofstream *, string, string> tempTuple = createFile(line);
+        tuple<ofstream *, string, string, string> tempTuple = createFile(line);
         ofstream *sfile = get<0>(tempTuple);
         string name = get<1>(tempTuple);
         string package = get<2>(tempTuple);
-        *sfile << endl;
-        bool needImport = false;
-        vector<string> imports;
-        needImport = true;
-        imports.push_back("java.util.*");
+        outfilename = get<3>(tempTuple);
+        // imports.push_back("java.util.*");
         if (line.find("theClass") != string::npos)
         {
             string parent = "";
@@ -531,7 +546,6 @@ int main(int argc, char **args)
                 if (tempparent != package)
                 {
                     imports.push_back(tempparent);
-                    needImport = true;
                 }
             }
             s = "withInterface(\"";
@@ -548,7 +562,6 @@ int main(int argc, char **args)
                 if (tempinterface != package)
                 {
                     imports.push_back(tempinterface);
-                    needImport = true;
                 }
             }
             getline(file, line);
@@ -566,20 +579,6 @@ int main(int argc, char **args)
                 break;
             case Default:
                 break;
-            }
-            if (needImport)
-            {
-                for (int i = 0; i < imports.size(); i++)
-                {
-                    if (imports[i].find("of ") != string::npos)
-                    {
-                        continue;
-                    }
-                    *sfile << "import ";
-                    *sfile << imports[i];
-                    *sfile << ";\n";
-                }
-                *sfile << "\n";
             }
             if (parent.find("of ") != string::npos)
             {
@@ -605,18 +604,7 @@ int main(int argc, char **args)
                 if (tempparent != package)
                 {
                     imports.push_back(tempparent);
-                    needImport = true;
                 }
-            }
-            if (needImport)
-            {
-                for (int i = 0; i < imports.size(); i++)
-                {
-                    *sfile << "import ";
-                    *sfile << imports[i];
-                    *sfile << ";\n";
-                }
-                *sfile << "\n";
             }
             getline(file, line);
             string vis;
@@ -697,18 +685,15 @@ int main(int argc, char **args)
             cout << line << endl;
             exit(1);
         }
-        // cout << "Hello I'm alive\n";
         //  search for methods, fields, constructors
         while (getline(file, line))
         {
             if (line.find("it.hasMethod") != string::npos)
             {
-                // cout << "Method\n";
                 createMethod(&file, sfile, line);
             }
             else if (line.find("it.hasConstructor") != string::npos)
             {
-                // cout << "Constructor\n";
                 createConstructor(&file, sfile, line, name);
             }
             else if (line.find("hasNoArgConstructor") != string::npos)
@@ -735,7 +720,6 @@ int main(int argc, char **args)
             }
             else if (line.find("it.hasField") != string::npos)
             {
-                // cout << "Field\n";
                 createVar(&file, sfile, line);
             }
             else if (line.find("it.has(TEXTUAL_REPRESENTATION") != string::npos)
@@ -777,6 +761,36 @@ int main(int argc, char **args)
     {
         std::cout << "Unable to open file";
     }
-
+    // Open the output file again to add imports
+    fstream file2(outfilename, ios::in);
+    vector<string> fileLines;
+    if (file2.is_open())
+    {
+        string line;
+        while (getline(file2, line))
+        {
+            fileLines.push_back(line);
+            if (line.find("package ") != string::npos)
+            {
+                fileLines.push_back("");
+                for (int j = 0; j < imports.size(); j++)
+                {
+                    string temp = "import " + imports[j] + ";";
+                    fileLines.push_back(temp);
+                }
+                fileLines.push_back("");
+            }
+        }
+        file2.close();
+    }
+    else
+    {
+        std::cout << "Unable to open file";
+    }
+    ofstream file3(outfilename);
+    for (int i = 0; i < fileLines.size(); i++)
+    {
+        file3 << fileLines[i] << endl;
+    }
     return 0;
 }
