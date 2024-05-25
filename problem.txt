@@ -1,13 +1,5 @@
-# not crashing
-cipther
-hashset support >> structure peculiar StuffyList
-MultiSet support >> structure MultiSet
-election candidate candidate >> weird leftover chars
-loop iterator GoAround >> i don't think this is reasonable to fix
-magic >> still shit
-music >> mess
-car >> int)[] strangeness
-text to numbers characterStatistics
-worker schedule WorkerSchedule
-
-# crashing
+double layer Maps
+data.structure.peculiar.StuffyList >> HashSet<E does not close ">" Testfile: lab10/StuffyListStructureTest
+similar bugs:
+    loop iterator GoAroundIterator
+problem is in constructor and method parameters
