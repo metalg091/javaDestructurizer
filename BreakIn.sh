@@ -10,3 +10,15 @@ files=$(find . -name "*StructureTest.java")
 for file in $files; do
     sed -i '/^package/d' "$file"
 done
+
+# add the package line to the files
+for file in $files; do
+    # remove everything after the last / 
+    path=${file%/*}
+    # replace / with .
+    path=$(echo $path | sed 's/\//./g')
+    # remove 2 character from the beginning
+    path=${path:2}
+    echo  $path
+    echo "package $path;" | cat - "$file" > temp && mv temp "$file"
+done
