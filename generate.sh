@@ -15,7 +15,13 @@ else
 fi
 
 # Compile main.cpp
-g++ main.cpp -o generator.out
+# check for g++ v6.3.0
+if [[ $(ls /usr/bin/g++* | grep "g++-6") == "" ]]; then
+    echo "**WARNING** g++-6 not found, using default g++"
+    g++ main.cpp -o generator.out
+else
+    g++-6 main.cpp -o generator.out
+fi
 
 # Check if compilation was successful
 if [ $? -ne 0 ]; then
@@ -33,6 +39,7 @@ for file in $files; do
         echo "Error occured $file"
     fi
 done
+
 # Delete evidence
 rm generator.out
 
