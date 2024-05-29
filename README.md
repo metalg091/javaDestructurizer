@@ -12,6 +12,9 @@ This is a tool that converts java structure test (give on java exams in ELTE) to
 
 ## Please drop a **Star** if you found it useful
 
+# Usage:
+Place the main.cpp and the generate.sh in the same folder. Place them in a director so that all the structure tests are in the same or a sub-directory. Then just start the generat.sh and enjoy. For more manual usage compile the program, and give the file as a parameter!
+
 # PLEASE REPORT ANY UNCOVERED CASES!!!
 
 Submit them through github as an issue it makes it easier to handle!
