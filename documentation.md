@@ -1,158 +1,270 @@
-# Code Generator
+# JavaDeconstructor Documentation
 
 ## Overview
 
-This C++ program is designed to generate Java class files from a specified input format. The input file describes various aspects of a Java class, including its fields, methods, constructors, and other properties. The program reads this input, processes the information, and generates a corresponding Java class file with the appropriate structure and content.
+This C++ code is designed to generate Java files from a specified input format. It defines various classes and functions to parse input, create Java class, enum, and interface files, and output them with appropriate Java syntax.
 
-## File Description
+## Table of Contents
 
-### File Name
+1. [Classes](#classes)
+   - [Field](#field)
+   - [Method](#method)
+   - [Constructor](#constructor)
+   - [File](#file)
+   - [Enum](#enum)
+   - [Class](#class)
+   - [Interface](#interface)
+   - [Exception](#exception)
+   - [Wrapper](#wrapper)
+2. [Helper Functions](#helper-functions)
+   - [split](#split)
+   - [protlvl](#protlvl)
+   - [removeQuotes](#removeQuotes)
+   - [concat](#concat)
+   - [createFile](#createFile)
+   - [createField](#createField)
+   - [createMethod](#createMethod)
+   - [createConstructor](#createConstructor)
+   - [getFile](#getFile)
+   - [typeMaker](#typeMaker)
+   - [typeNameSeparator](#typeNameSeparator)
 
-`main.cpp`
+# Classes
 
-### Purpose
+The uml class diagram can be found in javaDestructorizer.drawio (xml)
 
-The purpose of this file is to automate the generation of Java class files based on a specific input format. This tool simplifies the creation of boilerplate code for Java classes, ensuring consistency and reducing manual coding efforts.
+## Field
 
-### Location
+Represents a field in a Java class.
 
-The input file path should be provided as a command-line argument when running the executable.
+### Members
 
-## Dependencies
+- string name
+- string type
+- string visibility
+- bool isStatic
+- bool isFinal
+- bool hasGetter
+- bool hasSetter
 
-- Linux (the program is dependent on the mkdir system command)
+### Methods
 
-### Standard Libraries
+- string toString(): Returns a string representation of the field, including visibility, static, and final modifiers, and optionally generates getter and setter methods.
 
-- `<iostream>`
-- `<fstream>`
-- `<vector>`
-- `<string>`
-- `<cstdlib>`
-- `<utility>`
-- `<tuple>`
-- `<set>`
+## Method
 
-These standard libraries are used for basic input/output operations, file handling, string manipulation, and other fundamental tasks.
+Represents a method in a Java class.
 
-## Usage
+### Members
 
-To use this program, compile it with a C++ compiler and run the executable with the path to the input file as an argument. Or use the generate.sh file!
+- string name
+- string visibility
+- string returnType
+- vector<string> paramTypes
+- vector<string> paramNames
+- bool isStatic
 
-### Compilation
+### Methods
 
-```sh
-g++ -o code_generator main.cpp
+- string toString(): Returns a string representation of the method, including visibility, static modifier, return type, and parameters.
+
+## Constructor
+
+Represents a constructor in a Java class.
+
+### Members
+
+- string name
+- string visibility
+- vector<string> paramTypes
+- vector<string> paramNames
+
+### Methods
+
+- string toString(): Returns a string representation of the constructor, including visibility and parameters.
+
+## File
+
+Abstract base class for Java files.
+
+### Members
+
+- string testPath
+- string name
+- string package
+- string visibility
+- set<string> imports
+
+### Methods
+
+- virtual void process(): Pure virtual function to process the file.
+- virtual void toFile(): Pure virtual function to write the file to disk.
+
+## Enum
+
+Represents a Java enum.
+
+### Members
+
+- vector<string> elements
+- Methods
+- string toString(): Returns a string representation of the enum.
+- void toFile(): Writes the enum to a file.
+- void process(): Processes the input file to extract enum elements.
+
+## Class
+
+Represents a Java class.
+
+### Members
+
+- string parent
+- string interface
+- vector<Field\*> fields
+- vector<Method\*> methods
+- vector<Constructor\*> constructors
+- bool hasTextualRepresentation
+- bool hasEqualityCheck
+- bool hasHashCode
+
+### Methods
+
+- string toString(): Returns a string representation of the class.
+- void toFile(): Writes the class to a file.
+- void process(): Processes the input file to extract class details, fields, methods, and constructors.
+
+## Interface
+
+Represents a Java interface.
+
+### Members
+
+- string parentInterface
+- vector<Field> Fields
+- vector<Method> methods
+
+### Methods
+
+- string toString(): Returns a string representation of the interface (not implemented).
+- void toFile(): Writes the interface to a file.
+- void process(): Processes the input file to extract interface details (not implemented).
+
+## Exception
+
+Represents a Java exception class.
+
+Members
+
+- string parentException
+- vector<Field> Fields
+- vector<Method> methods
+- vector<Constructor> constructors
+  Methods
+- string toString(): Returns a string representation of the exception (not implemented).
+- void toFile(): Writes the exception to a file.
+- void process(): Processes the input file to extract exception details (not implemented).
+
+## Wrapper
+
+Wrapper class to manage multiple Java files.
+
+**This will be important in a later stage, it will help us overcome the limitations of a single StructureTest file**
+
+### Members
+
+- vector<File\*> files
+
+### Methods
+
+- void addFile(File\* file): Adds a file to the wrapper.
+- void process(): Processes and writes all files managed by the wrapper.
+
+# Helper Functions
+
+### split
+
+```cpp
+vector<string> split(string s, string delimiter);
 ```
 
-### Command-Line Usage
+Splits a given string s using the specified delimiter and returns a vector of substrings.
 
-```sh
-./code_generator path/to/structure_test.java
+### protlvl
+
+```cpp
+string protlvl(string line);
 ```
 
-## Functions / Classes
+Determines the visibility level (public, protected, private) of a given line based on specific keywords.
 
-### Global Variables:
+### removeQuotes
 
-- #### `bool isInterface` => to avoid giving body to interface functions
-- #### `vector<string> imports` => to be able to add imports anywhere (imports are added last)
-
-### `vector<string> split(string s, string delimiter)`
-
-Splits a string `s` into a vector of substrings based on the specified `delimiter`.
-
-### `string protlvl(string line)`
-
-Determines the protection level from a given line of text and returns a string representation of it.
-
-### `string removeQuotes(string line)`
-
-Recursively removes quotes from a given string.
-
-### `string typeMaker(string type)`
-
-Processes a type string to convert it into a valid Java type declaration.
-
-### `pair<string, string> typeNameSeparator(string line)`
-
-Separates a type and name from a given line of text.
-
-### `int createVar(fstream *infile, ofstream *outfile, string line)`
-
-Creates a variable declaration in the output Java file based on the input line.
-Also generates getter and setter functions.
-
-### `int createMethod(fstream *infile, ofstream *outfile, string line)`
-
-Creates a method declaration in the output Java file based on the input line.
-
-### `int createConstructor(fstream *infile, ofstream *outfile, string line, string name)`
-
-Creates a constructor declaration in the output Java file based on the input line and class name.
-
-### `string concat(vector<string> v, char delimiter)`
-
-Concatenates elements of a vector into a single string with the specified delimiter.
-
-### `std::tuple<ofstream *, string, string, string> createFile(string line)`
-
-Creates a new Java file based on the input line and returns a tuple containing the file stream, class name, package name and file name.
-
-### `int main(int argc, char **args)`
-
-The main function that drives the program. It reads the input file, processes each line, and generates the corresponding Java class file.
-
-## Examples
-
-To illustrate how the program works, here is an example usage scenario:
-
-1. Prepare an input file `ExampleStructureTest.java` with the following content:
-
-   ```
-   ...
-   CheckThat.theClass("my.package.MyClass")
-   ...
-   ```
-
-2. Compile and run the program:
-
-   ```sh
-   g++ -o code_generator main.cpp
-   ./code_generator ExampleStructureTest.java
-   ```
-
-3. The program will generate a Java class file `MyClass.java` in the appropriate package directory.
-
-## Testing
-
-To test the functionality of the program, prepare various input files with different class configurations and ensure that the generated Java files match the expected output.
-
-### Running Tests
-
-Use the following command to compile and run the program with all test input files:
-
-```sh
-./generate.sh test/
+```cpp
+string removeQuotes(string line);
 ```
 
-Verify the output Java files manually or write automated scripts to compare the generated files with expected results.
+Removes all double quotes from a given string.
 
-## Contributors
+### concat
 
-- **Original Author** - Provided the initial implementation and logic.
-
-- **Typo Fixes**
-  - Tóth Zalán
-
-## License
-
-```
-MIT License
+```cpp
+string concat(vector<string> v, char delimiter);
 ```
 
-## Additional Information
+Concatenates a vector of strings v into a single string with elements separated by the specified delimiter.
 
-For more information, refer to the project documentation or related files.
+### createFile
 
-Feel free to customize the documentation further based on any additional information or requirements.
+```cpp
+ofstream *createFile(string package, string name);
+```
+
+Creates a file for the specified package and name, replacing dots in the package name with slashes to create the appropriate directory structure. Returns a pointer to the created ofstream.
+
+### createField
+
+```cpp
+Field *createField(fstream* infile, string line, File\* parent);
+```
+
+Creates a Field object based on the input line and parent file.
+
+### createMethod
+
+```cpp
+Method *createMethod(fstream* infile, string line, File\* parent);
+```
+
+Creates a Method object based on the input line and parent file.
+
+### createConstructor
+
+```cpp
+Constructor *createConstructor(fstream* infile, string line, File\* parent);
+```
+
+Creates a Constructor object based on the input line and parent file.
+
+### getFile
+
+```cpp
+File *getFile(string inpth);
+```
+
+Returns a File object based on the input path. Returns nullptr on failure.
+
+### typeMaker
+
+```cpp
+string typeMaker(string type, File\* parent);
+```
+
+Helper function to process type information based on the parent file.
+
+### typeNameSeparator
+
+```cpp
+pair<string, string> typeNameSeparator(string line, File\* parent);
+```
+
+Separates a line into type and name components based on the parent file.
