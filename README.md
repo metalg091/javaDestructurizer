@@ -1,6 +1,6 @@
 # Java Destructurizer
 
-This is a tool that converts java structure test (give on java exams in ELTE) to the skeleton of the java Project. It:
+This is a tool that converts Java structure tests (given on Java exams in ELTE) to the skeleton of the Java Project. It:
 
 - creates the files
 - sets packages
@@ -13,12 +13,12 @@ This is a tool that converts java structure test (give on java exams in ELTE) to
 ## Please drop a **Star** if you found it useful
 
 # Usage:
-Place the main.cpp and the generate.sh in the same folder. Place them in a director so that all the structure tests are in the same or a sub-directory. Then just start the generat.sh and enjoy. For more manual usage compile the program, and give the file as a parameter!
+Place the main.cpp and the generate.sh in the same folder. Place them in a director so that all the structure tests are in the same or a sub-directory. Then just start the generat.sh and enjoy. For more manual usage compile the program, and give the test file as a parameter!
 
 # PLEASE REPORT ANY UNCOVERED CASES!!!
 
 Submit them through github as an issue it makes it easier to handle!
-Also, attach the failing test-file!
+Also, attach the failing test file!
 
 # Contributing:
 
