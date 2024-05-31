@@ -12,9 +12,25 @@ using namespace std; // for some reason it started to require std:: but don't re
 vector<string> split(string s, string delimiter);
 string protlvl(string line);
 string removeQuotes(string line);
-
 string concat(vector<string> v, char delimiter);
 ofstream *createFile(string package, string name);
+class Wrapper;
+class Field;
+class Method;
+class Constructor;
+class File;
+class Enum;
+class Class;
+class Interface;
+class Exception;
+// these functions must be placed after the classes
+Field *createField(fstream *infile, string line, File *parent);
+Method *createMethod(fstream *infile, string line, File *parent);
+Constructor *createConstructor(fstream *infile, string line, File *parent);
+File *getFile(string inpth); // nullptr == fail
+string typeMaker(string type, File *parent);
+pair<string, string> typeNameSeparator(string line, File *parent);
+void importMaker(string type, File *parent);
 
 vector<string> split(string s, string delimiter)
 {
@@ -271,6 +287,7 @@ public:
     string package;
     string visibility;
     set<string> imports;
+    Wrapper *wrapper;
     File(string pth) { this->testPath = pth; }; // default constructor
     virtual ~File(){};                          // default destructor
     virtual void process()
@@ -282,10 +299,6 @@ public:
         cout << "Error - Writing to abstract File\n";
     }
 };
-
-Field *createField(fstream *infile, string line, File *parent);
-Method *createMethod(fstream *infile, string line, File *parent);
-Constructor *createConstructor(fstream *infile, string line, File *parent);
 
 class Enum : public File
 {
@@ -762,11 +775,6 @@ public:
         }
     }
 };
-
-File *getFile(string inpth); // nullptr == fail
-string typeMaker(string type, File *parent);
-pair<string, string> typeNameSeparator(string line, File *parent);
-void importMaker(string type, File *parent);
 
 // makes all necessary imports from typemaker
 void importMaker(string type, File *parent)
