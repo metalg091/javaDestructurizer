@@ -384,15 +384,17 @@ public:
         }
         getline(file, line);
         visibility = protlvl(line);
-        getline(file, line);
-        if (line.find("hasEnumElements") != string::npos)
+        while (getline(file, line))
         {
-            string temp = line.substr(line.find("hasEnumElements(") + 16);
-            temp = temp.substr(0, temp.find(")"));
-            vector<string> tempV = split(temp, ", ");
-            for (std::size_t i = 0; i < tempV.size(); i++)
+            if (line.find("hasEnumElements") != string::npos)
             {
-                elements.push_back(removeQuotes(tempV[i]));
+                string temp = line.substr(line.find("hasEnumElements(") + 16);
+                temp = temp.substr(0, temp.find(")"));
+                vector<string> tempV = split(temp, ", ");
+                for (std::size_t i = 0; i < tempV.size(); i++)
+                {
+                    elements.push_back(removeQuotes(tempV[i]));
+                }
             }
         }
         file.close();
