@@ -4,7 +4,6 @@
 #include <string>
 #include <cstdlib>
 #include <utility>
-#include <tuple>
 #include <set>
 
 using namespace std; // for some reason it started to require std:: but don't remove, it could break the code
@@ -13,22 +12,30 @@ using namespace std; // for some reason it started to require std:: but don't re
 vector<string> split(string s, string delimiter);
 string protlvl(string line);
 string removeQuotes(string line);
-string typeMaker(string type);
-pair<string, string> typeNameSeparator(string line);
-int createVar(fstream *infile, ofstream *outfile, string line);
-int createMethod(fstream *infile, ofstream *outfile, string line);
-int createConstructor(fstream *infile, ofstream *outfile, string line, string name);
 string concat(vector<string> v, char delimiter);
-std::tuple<ofstream *, string, string, string> createFile(string line);
-
-// I know its bad practice but this far into the project I'm not passing arguments through twelve functions
-bool isInterface = false;
-set<string> imports;
+ofstream *createFile(string package, string name);
+class Wrapper;
+class Field;
+class Method;
+class Constructor;
+class File;
+class Enum;
+class Class;
+class Interface;
+class Exception;
+// these functions must be placed after the classes
+Field *createField(fstream *infile, string line, File *parent);
+Method *createMethod(fstream *infile, string line, File *parent);
+Constructor *createConstructor(fstream *infile, string line, File *parent);
+File *getFile(string inpth); // nullptr == fail
+string typeMaker(string type, File *parent);
+pair<string, string> typeNameSeparator(string line, File *parent);
+void importMaker(string type, File *parent);
 
 vector<string> split(string s, string delimiter)
 {
     vector<string> result;
-    size_t pos = 0;
+    std::size_t pos = 0;
     while ((pos = s.find(delimiter)) != string::npos)
     {
         result.push_back(s.substr(0, pos));
@@ -38,7 +45,7 @@ vector<string> split(string s, string delimiter)
     return result;
 }
 
-string protlvl(string line) // 1 == true, 0 == false
+string protlvl(string line)
 {
     // search for VISIBLE_TO_ALL VISIBLE_TO_SUBCLASSES VISIBLE_TO_NONE
     if (line.find("VISIBLE_TO_ALL") != string::npos)
@@ -61,7 +68,7 @@ string protlvl(string line) // 1 == true, 0 == false
 
 string removeQuotes(string line)
 {
-    size_t pos = line.find('"');
+    std::size_t pos = line.find('"');
     if (pos == string::npos)
     {
         return line;
@@ -69,8 +76,837 @@ string removeQuotes(string line)
     return removeQuotes(line.substr(0, pos) + line.substr(pos + 1));
 }
 
+string concat(vector<string> v, char delimiter)
+{
+    string result;
+    for (std::size_t i = 0; i < v.size(); i++)
+    {
+        result += v[i];
+        if (i != v.size() - 1)
+        {
+            result += delimiter;
+        }
+    }
+    return result;
+}
+
+ofstream *createFile(string package, string name)
+{
+    string pth;
+    if (package != "")
+    {
+        // replace all . with /
+        for (std::size_t i = 0; i < package.size(); i++)
+        {
+            if (package[i] == '.')
+            {
+                pth += '/';
+            }
+            else
+            {
+                pth += package[i];
+            }
+        }
+        string command = "mkdir -p " + pth;
+        system(command.c_str());
+        pth += '/';
+    }
+    pth += name + ".java";
+    ofstream *file = new ofstream(pth);
+    if (!file)
+    {
+        std::cout << "File error if ya here, I can't help ya!" << endl;
+        return nullptr;
+    }
+    return file;
+}
+
+class Field
+{
+public:
+    string name;
+    string type;
+    string visibility;
+    bool isStatic;
+    bool isFinal;
+    bool hasGetter;
+    bool hasSetter;
+    Field(){};
+    ~Field(){};
+    string toString()
+    {
+        string result = "\t" + visibility;
+        if (isStatic)
+        {
+            result += "static ";
+        }
+        if (isFinal)
+        {
+            result += "final " + type + " " + name;
+            // final fields need to be initialized
+            if (type == "int" || type == "double" || type == "float" || type == "long" || type == "char" || type == "byte" || type == "short")
+            {
+                result += " = 0; //TODO\n";
+            }
+            else if (type == "boolean")
+            {
+                result += " = false; //TODO\n";
+            }
+            else
+            {
+                result += " = null; //TODO\n";
+            }
+        }
+        else
+        {
+            result += type + " " + name + ";\n";
+        }
+        if (hasGetter)
+        {
+            result += "\n\tpublic " + type + " get" + static_cast<char>(toupper(name[0])) + name.substr(1) + "() {\n";
+            result += "\t\treturn " + name + ";\n";
+            result += "\t}\n";
+        }
+        if (!isFinal && hasSetter) // final fields can't have setters
+        {
+            result += "\n\tpublic void set" + static_cast<char>(toupper(this->name[0])) + name.substr(1) + "(" + type + " " + name + ") {\n";
+            result += "\t\t// TODO\n";
+            result += "\t\tthis." + name + " = " + name + ";\n";
+            result += "\t}\n";
+        }
+        return result;
+    }
+};
+
+class Method
+{
+public:
+    string name;
+    string visibility;
+    string returnType;
+    vector<string> paramTypes;
+    vector<string> paramNames;
+    bool isStatic;
+    Method(){};
+    ~Method(){};
+    string toString(bool hasBody)
+    {
+        string result = "\t" + visibility;
+        if (isStatic)
+        {
+            result += "static ";
+        }
+        result += returnType + " " + name + "(";
+        for (std::size_t i = 0; i < paramTypes.size(); i++)
+        {
+            result += paramTypes[i] + " " + paramNames[i];
+            if (i != paramTypes.size() - 1)
+            {
+                result += ", ";
+            }
+        }
+        result += ")";
+        if (hasBody)
+        {
+            result += " {\n";
+            result += "\t\t// TODO\n";
+            // dummy return here
+            if (returnType != "void")
+            {
+                if (returnType == "int")
+                {
+                    result += "\t\treturn 0;\n";
+                }
+                else if (returnType == "double")
+                {
+                    result += "\t\treturn 0.0;\n";
+                }
+                else if (returnType == "float")
+                {
+                    result += "\t\treturn 0.0f;\n";
+                }
+                else if (returnType == "long")
+                {
+                    result += "\t\treturn 0L;\n";
+                }
+                else if (returnType == "char")
+                {
+                    result += "\t\treturn '0';\n";
+                }
+                else if (returnType == "byte")
+                {
+                    result += "\t\treturn (byte)0;\n";
+                }
+                else if (returnType == "short")
+                {
+                    result += "\t\treturn (short)0;\n";
+                }
+                else if (returnType == "boolean")
+                {
+                    result += "\t\treturn false;\n";
+                }
+                else
+                {
+                    result += "\t\treturn null;\n";
+                }
+            }
+            result += "\t}\n";
+        }
+        else
+        {
+            result += ";\n";
+        }
+        return result;
+    }
+};
+
+class Constructor
+{
+public:
+    string name;
+    string visibility;
+    vector<string> paramTypes;
+    vector<string> paramNames;
+    Constructor(){};
+    ~Constructor(){};
+    string toString()
+    {
+        string result = "\t" + visibility + name + "(";
+        for (std::size_t i = 0; i < paramTypes.size(); i++)
+        {
+            result += paramTypes[i] + " " + paramNames[i];
+            if (i != paramTypes.size() - 1)
+            {
+                result += ", ";
+            }
+        }
+        result += ") {\n";
+        result += "\t\t// TODO\n";
+        result += "\t}\n";
+        return result;
+    }
+};
+
+class File // its abstract
+{
+public:
+    string testPath;
+    string name;
+    string package;
+    string visibility;
+    set<string> imports;
+    Wrapper *wrapper; // DO NOT DELETE THIS!
+    File(string pth, Wrapper *wp)
+    {
+        this->testPath = pth;
+        this->wrapper = wp;
+    };
+    virtual ~File(){}; // default destructor
+    virtual void process()
+    {
+        cout << "Error - Processing an abstract File\n";
+    }
+    virtual void toFile()
+    {
+        cout << "Error - Writing to abstract File\n";
+    }
+};
+
+class Enum : public File
+{
+public:
+    Enum(string inpth, Wrapper *wp, string iname) : File(inpth, wp)
+    {
+        package = "";
+        size_t pos = iname.find_last_of('.');
+        if (pos != string::npos)
+        {
+            package = iname.substr(0, pos);
+            iname = iname.substr(pos + 1);
+        }
+        this->name = iname;
+    }
+    ~Enum(){};
+    vector<string> elements;
+    string toString()
+    {
+        string result = "package " + package + ";\n\n";
+        bool hasImport = false;
+        for (string s : imports)
+        {
+            size_t pos = s.find_last_of('.');
+            string temppackage = s.substr(0, pos);
+            if (temppackage != package)
+            {
+                hasImport = true;
+                result += "import " + s + ";\n";
+            }
+        }
+        if (hasImport)
+        {
+            result += "\n";
+        }
+        result += visibility + "enum " + name + " {\n";
+        for (std::size_t i = 0; i < elements.size(); i++)
+        {
+            result += "\t" + elements[i];
+            if (i != elements.size() - 1)
+            {
+                result += ",\n";
+            }
+        }
+        result += "\n}";
+        return result;
+    }
+    void toFile()
+    {
+        ofstream *p = createFile(package, name);
+        if (p == nullptr)
+        {
+            cout << "Error creating file\n";
+            return;
+        }
+        *p << this->toString();
+        p->close();
+        delete p;
+    }
+    void process() override
+    {
+        fstream file(testPath);
+        string line;
+        bool go = true;
+        while (go && getline(file, line))
+        {
+            if (line.find("theEnum") != string::npos)
+            {
+                go = false;
+            }
+        }
+        getline(file, line);
+        visibility = protlvl(line);
+        while (getline(file, line))
+        {
+            if (line.find("hasEnumElements") != string::npos)
+            {
+                string temp = line.substr(line.find("hasEnumElements(") + 16);
+                temp = temp.substr(0, temp.find(")"));
+                vector<string> tempV = split(temp, ", ");
+                for (std::size_t i = 0; i < tempV.size(); i++)
+                {
+                    elements.push_back(removeQuotes(tempV[i]));
+                }
+            }
+        }
+        file.close();
+    }
+};
+
+class Class : public File
+{
+public:
+    Class(string inpth, Wrapper *wp, string iname, string iparent, string iinterface) : File(inpth, wp)
+    {
+        package = "";
+        size_t pos = iname.find_last_of('.');
+        if (pos != string::npos)
+        {
+            package = iname.substr(0, pos);
+            iname = iname.substr(pos + 1);
+        }
+        this->name = iname;
+        string patentpckg = "";
+        pos = iparent.find_last_of('.');
+        if (pos != string::npos)
+        {
+            patentpckg = iparent.substr(0, pos);
+            iparent = iparent.substr(pos + 1);
+        }
+        this->parent = iparent;
+        if (patentpckg != "")
+        {
+            imports.insert(patentpckg + "." + iparent);
+        }
+        string interfacepckg = "";
+        pos = iinterface.find_last_of('.');
+        if (pos != string::npos)
+        {
+            interfacepckg = iinterface.substr(0, pos);
+            iinterface = iinterface.substr(pos + 1);
+        }
+        this->interface = iinterface;
+        if (interfacepckg != "")
+        {
+            imports.insert(interfacepckg + "." + iinterface);
+        }
+    }
+    ~Class(){
+        // TODO says double free
+        /*for (std::size_t i = 0; i < fields.size(); i++)
+        {
+            delete &(fields[i]);
+        }
+        for (std::size_t i = 0; i < methods.size(); i++)
+        {
+            delete &(methods[i]);
+        }
+        for (std::size_t i = 0; i < constructors.size(); i++)
+        {
+            delete &(constructors[i]);
+        }*/
+    };
+    string parent;    // its a class
+    string interface; // its an interface
+    vector<Field *> fields;
+    vector<Method *> methods;
+    vector<Constructor *> constructors;
+    bool hasTextualRepresentation = false;
+    bool hasEqualityCheck = false;
+    bool hasHashCode = false;
+    string toString()
+    {
+        string result = "package " + package + ";\n\n";
+        bool hasImport = false;
+        for (string s : imports)
+        {
+            size_t pos = s.find_last_of('.');
+            string temppackage = s.substr(0, pos);
+            if (temppackage != package)
+            {
+                hasImport = true;
+                result += "import " + s + ";\n";
+            }
+        }
+        if (hasImport)
+        {
+            result += "\n";
+        }
+        result += visibility + "class " + name;
+        if (parent != "")
+        {
+            result += " extends " + parent;
+        }
+        if (interface != "")
+        {
+            result += " implements " + interface;
+        }
+        result += " {\n";
+        for (std::size_t i = 0; i < fields.size(); i++)
+        {
+            result += fields[i]->toString();
+        }
+        for (std::size_t i = 0; i < constructors.size(); i++)
+        {
+            result += constructors[i]->toString();
+        }
+        for (std::size_t i = 0; i < methods.size(); i++)
+        {
+            result += methods[i]->toString(true);
+        }
+        if (hasTextualRepresentation)
+        {
+            result += "\n\t@Override\n";
+            result += "\tpublic String toString() {\n";
+            result += "\t\treturn \"TODO\";\n";
+            result += "\t}\n";
+        }
+        if (hasEqualityCheck)
+        {
+            result += "\n\t@Override\n";
+            result += "\tpublic boolean equals(Object obj) {\n";
+            result += "\t\t// todo\n";
+            result += "\t\treturn true;\n";
+            result += "\t}\n";
+        } // need to overwrite hashCode too
+        if (hasHashCode || hasEqualityCheck)
+        {
+            result += "\n\t@Override\n";
+            result += "\tpublic int hashCode() {\n";
+            result += "\t\t// todo\n";
+            result += "\t\treturn 1;\n";
+            result += "\t}\n";
+        }
+        result += "\n}";
+        return result;
+    }
+    void toFile()
+    {
+        ofstream *p = createFile(package, name);
+        if (p == nullptr)
+        {
+            cout << "Error creating file\n";
+            return;
+        }
+        *p << this->toString();
+        p->close();
+        delete p;
+    }
+    void process() override
+    {
+        fstream file(testPath);
+        string line;
+        bool go = true;
+        while (go && getline(file, line))
+        {
+            if (line.find("theClass") != string::npos)
+            {
+                go = false;
+            }
+        }
+        getline(file, line);
+        visibility = protlvl(line);
+        while (getline(file, line))
+        {
+            if (line.find("it.hasMethod") != string::npos)
+            {
+                methods.push_back(createMethod(&file, line, this));
+            }
+            else if (line.find("it.hasConstructor") != string::npos)
+            {
+                constructors.push_back(createConstructor(&file, line, this));
+            }
+            else if (line.find("hasNoArgConstructor") != string::npos)
+            {
+                getline(file, line);
+                string vis = protlvl(line);
+                Constructor *c = new Constructor();
+                c->name = this->name;
+                c->visibility = vis;
+                constructors.push_back(c);
+            }
+            else if (line.find("it.hasField") != string::npos)
+            {
+                fields.push_back(createField(&file, line, this));
+            }
+            else if (line.find("it.has(TEXTUAL_REPRESENTATION") != string::npos)
+            {
+                hasTextualRepresentation = true;
+            }
+            else if (line.find("has(EQUALITY_CHECK") != string::npos)
+            {
+                hasEqualityCheck = true;
+                hasHashCode = true;
+            }
+            else if (line.find("has(HASH_CODE") != string::npos)
+            {
+                hasHashCode = true;
+            }
+        }
+        file.close();
+    }
+};
+
+class Interface : public File
+{
+public:
+    Interface(string inpth, Wrapper *wp, string iname, string iinterface) : File(inpth, wp)
+    {
+        package = "";
+        size_t pos = iname.find_last_of('.');
+        if (pos != string::npos)
+        {
+            package = iname.substr(0, pos);
+            iname = iname.substr(pos + 1);
+        }
+        this->name = iname;
+        string interfacepckg = "";
+        pos = iinterface.find_last_of('.');
+        if (pos != string::npos)
+        {
+            interfacepckg = iinterface.substr(0, pos);
+            iinterface = iinterface.substr(pos + 1);
+        }
+        this->parentInterface = iinterface;
+        if (interfacepckg != "")
+        {
+            imports.insert(interfacepckg + "." + iinterface);
+        }
+    }
+    ~Interface(){};
+    string parentInterface; // its an interface
+    vector<Field *> fields;
+    vector<Method *> methods;
+    string toString()
+    {
+        string result = "package " + package + ";\n\n";
+        bool hasImport = false;
+        for (string s : imports)
+        {
+            size_t pos = s.find_last_of('.');
+            string temppackage = s.substr(0, pos);
+            if (temppackage != package)
+            {
+                hasImport = true;
+                result += "import " + s + ";\n";
+            }
+        }
+        if (hasImport)
+        {
+            result += "\n";
+        }
+        result += visibility + "interface " + name;
+        if (parentInterface != "")
+        {
+            result += " extends " + parentInterface;
+        }
+        result += " {\n";
+        for (std::size_t i = 0; i < fields.size(); i++)
+        {
+            result += fields[i]->toString();
+        }
+        for (std::size_t i = 0; i < methods.size(); i++)
+        {
+            result += methods[i]->toString(false);
+        }
+        result += "\n}";
+        return result;
+    }
+    void toFile()
+    {
+        cout << "name " << name << " package " + package + ";\n\n";
+        ofstream *p = createFile(package, name);
+        if (p == nullptr)
+        {
+            cout << "Error creating file\n";
+            return;
+        }
+        *p << this->toString();
+        p->close();
+        delete p;
+    }
+    void process() override
+    {
+
+        fstream file(testPath);
+        string line;
+        bool go = true;
+        while (go && getline(file, line))
+        {
+            if (line.find("theInterface") != string::npos)
+            {
+                go = false;
+            }
+        }
+        getline(file, line);
+        visibility = protlvl(line);
+        while (getline(file, line))
+        {
+            if (line.find("it.hasMethod") != string::npos)
+            {
+                methods.push_back(createMethod(&file, line, this));
+            }
+            else if (line.find("it.hasConstructor") != string::npos)
+            {
+                // interfaces don't have constructors
+                cout << "Error - Interface: " + name + " has constructor\n";
+            }
+            else if (line.find("it.hasField") != string::npos)
+            {
+                fields.push_back(createField(&file, line, this));
+            }
+        }
+        file.close();
+    }
+};
+
+class Exception : public File
+{
+public:
+    Exception(string inpth, Wrapper *wp, string iname, string iparent) : File(inpth, wp)
+    {
+        package = "";
+        size_t pos = iname.find_last_of('.');
+        if (pos != string::npos)
+        {
+            package = iname.substr(0, pos);
+            iname = iname.substr(pos + 1);
+        }
+        this->name = iname;
+        string patentpckg = "";
+        pos = iparent.find_last_of('.');
+        if (pos != string::npos)
+        {
+            patentpckg = iparent.substr(0, pos);
+            iparent = iparent.substr(pos + 1);
+        }
+        this->parentException = iparent;
+        if (patentpckg != "")
+        {
+            imports.insert(patentpckg + "." + iparent);
+        }
+    }
+    ~Exception(){};
+    string parentException;
+    vector<Field *> fields;
+    vector<Method *> methods;
+    vector<Constructor *> constructors;
+    string toString()
+    {
+        string result = "package " + package + ";\n\n";
+        bool hasImport = false;
+        for (string s : imports)
+        {
+            size_t pos = s.find_last_of('.');
+            string temppackage = s.substr(0, pos);
+            if (temppackage != package)
+            {
+                hasImport = true;
+                result += "import " + s + ";\n";
+            }
+        }
+        if (hasImport)
+        {
+            result += "\n";
+        }
+        result += visibility + "class " + name;
+        if (parentException != "")
+        {
+            result += " extends " + parentException;
+        }
+        result += " {\n";
+        for (std::size_t i = 0; i < fields.size(); i++)
+        {
+            result += fields[i]->toString();
+        }
+        for (std::size_t i = 0; i < constructors.size(); i++)
+        {
+            result += constructors[i]->toString();
+        }
+        for (std::size_t i = 0; i < methods.size(); i++)
+        {
+            result += methods[i]->toString(true);
+        }
+        result += "\n}";
+        return result;
+    }
+    void toFile()
+    {
+        ofstream *p = createFile(package, name);
+        if (p == nullptr)
+        {
+            cout << "Error creating file\n";
+            return;
+        }
+        *p << this->toString();
+        p->close();
+        delete p;
+    }
+    void process() override
+    {
+        fstream file(testPath);
+        string line;
+        bool go = true;
+        while (go && getline(file, line))
+        {
+            if (line.find("theCheckedException") != string::npos)
+            {
+                go = false;
+            }
+        }
+        getline(file, line);
+        visibility = protlvl(line);
+        while (getline(file, line))
+        {
+            if (line.find("it.hasMethod") != string::npos)
+            {
+                methods.push_back(createMethod(&file, line, this));
+            }
+            else if (line.find("it.hasConstructor") != string::npos)
+            {
+                constructors.push_back(createConstructor(&file, line, this));
+            }
+            else if (line.find("hasNoArgConstructor") != string::npos)
+            {
+                getline(file, line);
+                string vis = protlvl(line);
+                Constructor *c = new Constructor();
+                c->name = this->name;
+                c->visibility = vis;
+                constructors.push_back(c);
+            }
+            else if (line.find("it.hasField") != string::npos)
+            {
+                fields.push_back(createField(&file, line, this));
+            }
+        }
+        file.close();
+    }
+};
+
+class Wrapper
+{
+public:
+    Wrapper(){}; // default constructor
+    ~Wrapper()
+    {
+        for (std::size_t i = 0; i < files.size(); i++)
+        {
+            delete (files[i]);
+        }
+    }
+    vector<File *> files;
+    void addFile(File *file)
+    {
+        if (file != nullptr)
+        {
+            files.push_back(file);
+        }
+    }
+    void process()
+    {
+        for (std::size_t i = 0; i < files.size(); i++)
+        {
+            // cast file to class, interface or enum (happens only if called by pointers)
+            files[i]->process();
+        }
+        for (std::size_t i = 0; i < files.size(); i++)
+        {
+            files[i]->toFile();
+        }
+    }
+};
+
+// makes all necessary imports from typemaker
+void importMaker(string type, File *parent)
+{
+    // type one -> some.package.name"
+    // type two -> some.package.name[]
+    // type three -> some.package.name<some.package.name>
+    // type four -> some.package.name<some.package.name, some.package.name>
+    // combinations like some.package.name<some.package.name[], some.package.name>
+    if (type.find("[]") != string::npos)
+    {
+        string type1 = type.substr(0, type.find("[]"));
+        string type2 = type.substr(type.find("[]") + 2);
+        importMaker(type1, parent);
+        importMaker(type2, parent);
+        return;
+    }
+    if (type.find("<") != string::npos && type.find(">") != string::npos)
+    {
+        string type1 = type.substr(0, type.find("<"));
+        string type2 = type.substr(type.find("<") + 1);
+        type2 = type2.substr(0, type2.find_last_of(">"));
+        importMaker(type1, parent);
+        importMaker(type2, parent);
+        return;
+    }
+    if (type.find(",") != string::npos)
+    {
+        string type1 = type.substr(0, type.find(","));
+        string type2 = type.substr(type.find(",") + 2);
+        importMaker(type1, parent);
+        importMaker(type2, parent);
+        return;
+    }
+    if (type.find(".") != string::npos)
+    {
+        parent->imports.insert(removeQuotes(type));
+    }
+    return;
+}
+
 // check for list and arrays (never seen a set or map in a test) => there is a map in one of the tests
-string typeMaker(string type)
+string typeMaker(string type, File *parent)
 {
     if (type.find(')') != string::npos)
     {
@@ -87,7 +923,10 @@ string typeMaker(string type)
     }
     else if (type.find("HashMap of ") != string::npos)
     {
-        imports.insert("java.util.*");
+        if (parent != nullptr)
+        {
+            parent->imports.insert("java.util.*");
+        }
         string temp = type.substr(type.find("of ") + 3);
         string key = temp.substr(0, temp.find(" to "));
         string value = temp.substr(temp.find(" to ") + 4);
@@ -95,44 +934,49 @@ string typeMaker(string type)
     }
     else if (type.find("of ") != string::npos) // try to autocomplete unimplemented types
     {
-        imports.insert("java.util.*");
+        if (parent != nullptr)
+        {
+            parent->imports.insert("java.util.*");
+        }
         type = type.substr(0, type.find("of ") - 1) + "<" + type.substr(type.find("of ") + 3) + ">";
     }
     if (type.find("of ") != string::npos)
     {
         if (type.find("...") != string::npos)
         {
-            return typeMaker(type.substr(0, type.find("..."))) + "...";
+            return typeMaker(type.substr(0, type.find("...")), parent) + "...";
         }
         if (type.find("<") != string::npos && type.find(">") != string::npos)
         {
             if (type.find(",") != string::npos)
             {
                 string key = type.substr(0, type.find(","));
-                key = typeMaker(key.substr(key.find("<") + 1));
+                key = typeMaker(key.substr(key.find("<") + 1), parent);
                 string value = type.substr(type.find(",") + 2);
-                value = typeMaker(value.substr(0, value.find(">")));
+                value = typeMaker(value.substr(0, value.find(">")), parent);
                 return removeQuotes(type.substr(0, type.find("<") + 1) + key + ", " + value + type.substr(type.find(">")));
             }
             string temp = type.substr(type.find("<"));
             temp = temp.substr(1, temp.find(">") - 1);
-            return removeQuotes(type.substr(0, type.find("<") + 1) + typeMaker(temp) + type.substr(type.find(">")));
+            return removeQuotes(type.substr(0, type.find("<") + 1) + typeMaker(temp, parent) + type.substr(type.find(">")));
         }
         else if (type.find("array of ") != string::npos)
         {
-            return typeMaker(type.substr(type.find("of ") + 3) + "[]");
+            return typeMaker(type.substr(type.find("of ") + 3) + "[]", parent);
         }
     }
     else if (type.find(".") != string::npos && type.find("...") == string::npos)
     {
-        string imp = type.substr(0, type.find_last_of('.'));
-        imports.insert(imp);
+        if (parent != nullptr)
+        {
+            importMaker(type, parent);
+        }
         type = type.substr(type.find_last_of('.') + 1);
     }
     return removeQuotes(type);
 }
 
-pair<string, string> typeNameSeparator(string line)
+pair<string, string> typeNameSeparator(string line, File *parent)
 {
     string type;
     string name;
@@ -143,7 +987,7 @@ pair<string, string> typeNameSeparator(string line)
         name = name.substr(0, name.find('"'));
         type = line.substr(line.find("ofType(\"") + 8);
         type = type.substr(0, type.find("\")"));
-        return make_pair(typeMaker(type), removeQuotes(name));
+        return make_pair(typeMaker(type, parent), removeQuotes(name));
     }
     else
     {
@@ -151,325 +995,203 @@ pair<string, string> typeNameSeparator(string line)
         {
             type = line.substr(line.find(':') + 2, line.find(')') - line.find(':') - 3);
             name = line.substr(line.find('"') + 1, line.find(':') - line.find('"') - 1);
-            return make_pair(typeMaker(type), removeQuotes(name));
+            return make_pair(typeMaker(type, parent), removeQuotes(name));
         }
         else
         {
-            return make_pair(typeMaker(line), "todoName");
+            return make_pair(typeMaker(line, parent), "todoName");
         }
     }
 }
 
-int createVar(fstream *infile, ofstream *outfile, string line)
+Field *createField(fstream *infile, string line, File *parent)
 {
-    string vis = "";
-    string Static = "";
-    string Final = "";
+    Field *f = new Field();
     // structure -> ("name: type")
     // auto [type, name] = typeNameSeparator(line); // only works after c++11
-    pair<string, string> temp = typeNameSeparator(line);
-    string type = temp.first;
-    string name = temp.second;
+    string tempname;
+    string temptype;
     if (line.find("hasFieldOfType") != string::npos)
     {
-        name = line.substr(line.find('"') + 1);
-        name = name.substr(0, name.find('"'));
-        type = line.substr(0, line.find_last_of('"'));
-        type = type.substr(type.find(',') + 3);
+        tempname = line.substr(line.find('"') + 1);
+        tempname = tempname.substr(0, tempname.find('"'));
+        temptype = line.substr(0, line.find_last_of('"'));
+        temptype = temptype.substr(temptype.find(',') + 3);
     }
+    else
+    {
+        pair<string, string> temp = typeNameSeparator(line, parent);
+        temptype = temp.first;
+        tempname = temp.second;
+    }
+    f->name = tempname;
+    f->type = typeMaker(temptype, parent);
     getline(*infile, line);
     // search for visibility
-    vis = protlvl(line);
+    f->visibility = protlvl(line);
     if (line.find("USABLE_WITHOUT_INSTANCE") != string::npos)
     {
-        Static = "static ";
+        f->isStatic = true;
+    }
+    else
+    {
+        f->isStatic = false;
     }
     if (line.find("NOT_MODIFIABLE") != string::npos)
     {
-        Final = "final ";
+        f->isFinal = true;
     }
-    type = typeMaker(type);
-    *outfile << "\t" << vis << Static << Final << type << " " << name << ";\n";
-    getline(*infile, line);
-    if (line.find("thatHas(") != string::npos)
+    else
     {
-        bool hasGetter = false;
-        bool hasSetter = false;
+        f->isFinal = false;
+    }
+    getline(*infile, line);
+    if (line.find("thatHas(") != string::npos && line.find("thatHasNo(") == string::npos)
+    {
         if (line.find("GETTER") != string::npos)
         {
-            hasGetter = true;
+            f->hasGetter = true;
         }
         if (line.find("SETTER") != string::npos)
         {
-            hasSetter = true;
-        }
-        if (hasGetter)
-        {
-            *outfile << "\n\t" << "public " << type << " get" << static_cast<char>(toupper(name[0])) << name.substr(1) << "() {\n";
-            *outfile << "\t\treturn " << name << ";\n";
-            *outfile << "\t}\n";
-        }
-        if (hasSetter)
-        {
-            *outfile << "\n\t" << "public void set" << static_cast<char>(toupper(name[0])) << name.substr(1) << "(" << type << " " << name << ") {\n";
-            *outfile << "\t\t// TODO\n";
-            *outfile << "\t\tthis." << name << " = " << name << ";\n";
-            *outfile << "\t}\n";
+            f->hasSetter = true;
         }
     }
-    return 0;
+    return f;
 }
 
-int createMethod(fstream *infile, ofstream *outfile, string line)
+Method *createMethod(fstream *infile, string line, File *parent)
 {
-    string returnType;
-    vector<string> paramTypes;
-    vector<string> paramNames;
-    string name;
-    string vis = "";
-    string Static = "";
-    name = line.substr(line.find('"') + 1);
-    name = name.substr(0, name.find('"'));
+    Method *m = new Method();
+    string tempReturnType = "void";
+    vector<string> tempParamTypes;
+    vector<string> tempParamNames;
+    string tempname;
+    tempname = line.substr(line.find('"') + 1);
+    tempname = tempname.substr(0, tempname.find('"'));
+    m->name = tempname;
     if (line.find("withParams") != string::npos)
     {
         string temp = line.substr(line.find("withParams(") + 11);
         temp = temp.substr(0, temp.find(")"));
         vector<string> tempV = split(temp, ", ");
-        for (size_t i = 0; i < tempV.size(); i++)
+        for (std::size_t i = 0; i < tempV.size(); i++)
         {
             // auto [temptype, tempname] = typeNameSeparator(tempV[i]); // only works after c++11
-            pair<string, string> tempPair = typeNameSeparator(tempV[i]);
-            string temptype = tempPair.first;
-            string tempname = tempPair.second;
+            pair<string, string> tempPair = typeNameSeparator(tempV[i], parent);
+            string tempParamType = tempPair.first;
+            string tempParamName = tempPair.second;
             if (tempname == "todoName")
             {
                 tempname = "todoName" + to_string(i);
             }
-            paramTypes.push_back(temptype);
-            paramNames.push_back(tempname);
+            tempParamTypes.push_back(tempParamType);
+            tempParamNames.push_back(tempParamName);
         }
     }
     else if (line.find("hasMethodWithParams") != string::npos)
     {
         string temp = line.substr(line.find(',') + 2);
         vector<string> tempV = split(temp, ", ");
-        for (size_t i = 0; i < tempV.size(); i++)
+        for (std::size_t i = 0; i < tempV.size(); i++)
         {
-            paramTypes.push_back(typeMaker(tempV[i]));
-            paramNames.push_back("todoName" + to_string(i));
+            tempParamTypes.push_back(typeMaker(tempV[i], parent));
+            tempParamNames.push_back("todoName" + to_string(i));
         }
     } // else no params
+    m->paramNames = tempParamNames;
+    m->paramTypes = tempParamTypes;
     for (int i = 0; i < 2; i++)
     {
         getline(*infile, line);
         if (line.find("thatIs(") != string::npos)
         {
-            vis = protlvl(line);
+            m->visibility = protlvl(line);
             if (line.find("USABLE_WITHOUT_INSTANCE") != string::npos)
             {
-                Static = "static ";
+                m->isStatic = true;
+            }
+            else
+            {
+                m->isStatic = false;
             }
         }
         else if (line.find("thatReturns") != string::npos)
         {
             if (line.find("thatReturnsNothing") != string::npos)
             {
-                returnType = "void";
+                tempReturnType = "void";
             }
             else
             {
-                returnType = line.substr(line.find("thatReturns(\"") + 13);
-                returnType = returnType.substr(0, returnType.find("\")"));
-                returnType = typeMaker(returnType);
+                tempReturnType = line.substr(line.find("thatReturns(") + 13);
+                tempReturnType = tempReturnType.substr(0, tempReturnType.find(")"));
+                tempReturnType = typeMaker(tempReturnType, parent);
             }
         }
+        m->returnType = tempReturnType;
     }
-    *outfile << "\t" << vis << Static << returnType << " " << name << "(";
-    for (size_t i = 0; i < paramTypes.size(); i++)
-    {
-        *outfile << paramTypes[i] << " " << paramNames[i];
-        if (i != paramTypes.size() - 1)
-        {
-            *outfile << ", ";
-        }
-    }
-    *outfile << ")";
-    if (isInterface) // interfaces don't have bodies
-    {
-        *outfile << ";\n";
-        return 0;
-    }
-    *outfile << " {\n";
-    *outfile << "\t\t// TODO\n";
-    if (returnType != "void")
-    {
-        if (returnType == "int")
-        {
-            *outfile << "\t\treturn 0;\n";
-        }
-        else if (returnType == "double")
-        {
-            *outfile << "\t\treturn 0.0;\n";
-        }
-        else if (returnType == "float")
-        {
-            *outfile << "\t\treturn 0.0f;\n";
-        }
-        else if (returnType == "long")
-        {
-            *outfile << "\t\treturn 0L;\n";
-        }
-        else if (returnType == "char")
-        {
-            *outfile << "\t\treturn '0';\n";
-        }
-        else if (returnType == "byte")
-        {
-            *outfile << "\t\treturn (byte)0;\n";
-        }
-        else if (returnType == "short")
-        {
-            *outfile << "\t\treturn (short)0;\n";
-        }
-        else if (returnType == "boolean")
-        {
-            *outfile << "\t\treturn false;\n";
-        }
-        else
-        {
-            *outfile << "\t\treturn null;\n";
-        }
-    }
-    *outfile << "\t}\n";
-    return 0;
+    return m;
 }
 
-int createConstructor(fstream *infile, ofstream *outfile, string line, string name)
+Constructor *createConstructor(fstream *infile, string line, File *parent)
 {
-    vector<string> paramTypes;
-    vector<string> paramNames;
-    string vis = "";
+    Constructor *c = new Constructor();
+    c->name = parent->name;
+    vector<string> tempParamTypes;
+    vector<string> tempParamNames;
     if (line.find("withArgs") != string::npos)
     {
-        if (line.find("withArgsAsInParent") != string::npos)
+        if (line.find("withArgsAsInParent") != string::npos) // using the File class we can search for these
         {
             cout << "**WARNING** Constructor withArgsAsInParent\n";
-            paramTypes.push_back("withArgsAsInParent");
-            paramNames.push_back("withArgsAsInParent");
+            /*paramTypes.push_back("withArgsAsInParent");
+            paramNames.push_back("withArgsAsInParent");*/
         }
-        else if (line.find("withArgsSimilarToFields") != string::npos)
+        else if (line.find("withArgsSimilarToFields") != string::npos) // using the File class we can search for these
         {
             cout << "**WARNING** Constructor withArgsSimilarToFields\n";
-            paramTypes.push_back("withArgsSimilarToFields");
-            paramNames.push_back("withArgsSimilarToFields");
+            /*paramTypes.push_back("withArgsSimilarToFields");
+            paramNames.push_back("withArgsSimilarToFields");*/
         }
         else if (line.find("withArgs(") != string::npos)
         {
             string temp = line.substr(line.find("withArgs(") + 9);
             temp = temp.substr(0, temp.find(")"));
             vector<string> tempV = split(temp, ", ");
-            for (size_t i = 0; i < tempV.size(); i++)
+            for (std::size_t i = 0; i < tempV.size(); i++)
             {
                 // auto [temptype, tempname] = typeNameSeparator(tempV[i]); // only works after c++11
-                pair<string, string> tempPair = typeNameSeparator(tempV[i]);
+                pair<string, string> tempPair = typeNameSeparator(tempV[i], parent);
                 string temptype = tempPair.first;
                 string tempname = tempPair.second;
-                paramTypes.push_back(temptype);
-                paramNames.push_back(tempname);
+                if (tempname == "todoName")
+                {
+                    tempname = "todoName" + to_string(i);
+                }
+                tempParamTypes.push_back(temptype);
+                tempParamNames.push_back(tempname);
             }
         }
         else
         {
             cout << "**WARNING** Constructor with unimplemented args type\n";
-            paramTypes.push_back("unimplemented");
-            paramNames.push_back("unimplemented");
+            tempParamTypes.push_back("unimplemented");
+            tempParamNames.push_back("unimplemented");
         }
     } // else no params
+    c->paramNames = tempParamNames;
+    c->paramTypes = tempParamTypes;
     getline(*infile, line);
-    vis = protlvl(line);
-    *outfile << "\t" << vis << name << "(";
-    for (size_t i = 0; i < paramTypes.size(); i++)
-    {
-        *outfile << paramTypes[i] << " " << paramNames[i];
-        if (i != paramTypes.size() - 1)
-        {
-            *outfile << ", ";
-        }
-    }
-    *outfile << ") {\n";
-    *outfile << "\t\t// TODO\n";
-    *outfile << "\t}\n";
-    return 0;
+    c->visibility = protlvl(line);
+    return c;
 }
 
-string concat(vector<string> v, char delimiter)
+File *getFile(string inpth, Wrapper *wp) // nullptr == fail
 {
-    string result;
-    for (size_t i = 0; i < v.size(); i++)
-    {
-        result += v[i];
-        if (i != v.size() - 1)
-        {
-            result += delimiter;
-        }
-    }
-    return result;
-}
-
-std::tuple<ofstream *, string, string, string> createFile(string line)
-{
-    size_t pos = line.find('"');
-    size_t pos2 = line.find('"', pos + 1);
-    if (pos == string::npos || pos2 == string::npos)
-    {
-        cout << "Error in createFile\n";
-        exit(1);
-    }
-    string className = line.substr(pos + 1, pos2 - pos - 1);
-    pos = className.find_last_of('.');
-    string name = className.substr(pos + 1);
-    vector<string> package = split(className.substr(0, pos), ".");
-    // create file
-    string place;
-    for (size_t i = 0; i < package.size(); i++)
-    {
-        place += package[i];
-        place += "/";
-    }
-    string command = "mkdir -p " + place;
-    system(command.c_str());
-    place += name;
-    place += ".java";
-    ofstream *file = new ofstream(place);
-    if (!file)
-    {
-        std::cout << "File error if ya here, I can't help ya!" << endl;
-        exit(1);
-    }
-    *file << "package ";
-    for (size_t i = 0; i < package.size(); i++)
-    {
-        *file << package[i];
-        if (i != package.size() - 1)
-        {
-            *file << ".";
-        }
-    }
-    *file << ";\n";
-    return make_tuple(file, name, concat(package, '.'), place);
-}
-
-int main(int argc, char **args)
-{
-    if (argc != 2)
-    {
-        cout << "Usage: " << args[0] << " <input file>" << endl;
-        exit(1);
-    }
-    fstream file(args[1]);
+    fstream file(inpth);
     string line;
     string stopString = "CheckThat.the";
-    string outfilename;
     if (file.is_open())
     {
         bool go = true;
@@ -480,213 +1202,144 @@ int main(int argc, char **args)
                 go = false;
             }
         }
-        size_t pos; // backwards compatibility, I'm not rewriting the code
-        // auto [sfile, name, package] = createFile(line); // only works after c++11
-        tuple<ofstream *, string, string, string> tempTuple = createFile(line);
-        ofstream *sfile = get<0>(tempTuple);
-        string name = get<1>(tempTuple);
-        string package = get<2>(tempTuple);
-        outfilename = get<3>(tempTuple);
         if (line.find("theClass") != string::npos)
         {
+            string name;
+            name = line.substr(line.find("theClass(") + 9);
+            size_t pos = name.find(',');
             string parent = "";
             string interface = "";
-            // search for withInterface or withParent in line
-            string s = "withParent(\"";
-            pos = line.find(s);
             if (pos != string::npos)
             {
-                parent = " extends ";
-                string tempparent = line.substr(pos + s.length());
-                pos = tempparent.find('"');
-                tempparent = tempparent.substr(0, pos);
-                pos = tempparent.find_last_of('.');
-                parent += tempparent.substr(pos + 1);
-                tempparent = tempparent.substr(0, pos);
-                if (tempparent != package && tempparent.find("of ") == string::npos)
+                name = name.substr(0, pos);
+                if (line.find("withParent(") != string::npos)
                 {
-                    imports.insert(tempparent);
+                    parent = line.substr(line.find("withParent(") + 11);
+                    pos = parent.find(')');
+                    parent = parent.substr(0, pos);
+                    pos = parent.find('"');                 // this must be here
+                    size_t pos2 = parent.find_last_of('"'); // this must not be the same as above
+                    parent = parent.substr(pos + 1, pos2 - pos - 1);
+                    /*if (parent.find("of ") != string::npos) // this removes quotes // TODO this is wrong
+                    {
+                        parent = typeMaker(parent, nullptr);
+                    }*/
                 }
-                else if (tempparent.find("of ") != string::npos)
+                if (line.find("withInterface(") != string::npos)
                 {
-                    typeMaker(tempparent); // this will add necessary imports
+                    interface = line.substr(line.find("withInterface(") + 14);
+                    pos = interface.find(')');
+                    interface = interface.substr(0, pos);
+                    pos = interface.find('"');                 // this must be here
+                    size_t pos2 = interface.find_last_of('"'); // this must not be the same as above
+                    interface = interface.substr(pos + 1, pos2 - pos - 1);
                 }
             }
-            s = "withInterface(\"";
-            pos = line.find(s);
-            if (pos != string::npos)
+            else
             {
-                interface = " implements ";
-                string tempinterface = line.substr(pos + s.length());
-                pos = tempinterface.find('"');
-                tempinterface = tempinterface.substr(0, pos);
-                pos = tempinterface.find_last_of('.');
-                interface += tempinterface.substr(pos + 1);
-                tempinterface = tempinterface.substr(0, pos);
-                if (tempinterface != package)
-                {
-                    imports.insert(tempinterface);
-                }
+                name = name.substr(0, name.find(')'));
             }
-            getline(file, line);
-            string vis = protlvl(line);
-            if (parent.find("of ") != string::npos)
-            {
-                parent = typeMaker(parent);
-            }
-            *sfile << vis << "class " << name << parent << interface << " {\n";
+            pos = name.find('"');
+            size_t pos2 = name.find_last_of('"');
+            name = name.substr(pos + 1, pos2 - pos - 1);
+            return (new Class(removeQuotes(inpth), wp, removeQuotes(name), removeQuotes(parent), removeQuotes(interface)));
         }
         else if (line.find("theInterface") != string::npos)
         {
-            isInterface = true;
-            string parent = "";
-            string s = "withParent(\"";
-            pos = line.find(s);
+            string name;
+            name = line.substr(line.find("theInterface(") + 13);
+            size_t pos = name.find(',');
+            string interface = "";
             if (pos != string::npos)
             {
-                parent = " extends ";
-                string tempparent = line.substr(pos + s.length());
-                pos = tempparent.find('"');
-                tempparent = tempparent.substr(0, pos);
-                pos = tempparent.find_last_of('.');
-                parent += tempparent.substr(pos + 1);
-                tempparent = tempparent.substr(0, pos);
-                if (tempparent != package)
+                name = name.substr(0, pos);
+                if (line.find("withInterface(") != string::npos)
                 {
-                    imports.insert(tempparent);
+                    interface = line.substr(line.find("withInterface(") + 14);
+                    pos = interface.find(')');
+                    interface = interface.substr(0, pos);
+                    pos = interface.find('"');                 // this must be here
+                    size_t pos2 = interface.find_last_of('"'); // this must not be the same as above
+                    interface = interface.substr(pos + 1, pos2 - pos - 1);
                 }
             }
-            getline(file, line);
-            string vis = protlvl(line);
-            *sfile << vis << "interface " << name << parent << " {\n";
+            else
+            {
+                name = name.substr(0, name.find(')'));
+            }
+            return (new Interface(removeQuotes(inpth), wp, removeQuotes(name), removeQuotes(interface)));
         }
         else if (line.find("theEnum") != string::npos)
         {
-            getline(file, line);
-            string vis = protlvl(line);
-            *sfile << vis << "enum " << name << " {\n";
-            getline(file, line);
-            if (line.find("hasEnumElements") != string::npos)
-            {
-                string temp = line.substr(line.find("hasEnumElements(") + 16);
-                temp = temp.substr(0, temp.find(")"));
-                vector<string> tempV = split(temp, ", ");
-                for (size_t i = 0; i < tempV.size(); i++)
-                {
-                    *sfile << "\t" << removeQuotes(tempV[i]);
-                    if (i != tempV.size() - 1)
-                    {
-                        *sfile << ",\n";
-                    }
-                }
-            }
+            string name;
+            name = line.substr(line.find("theEnum(") + 8);
+            name = name.substr(0, name.find(')'));
+            size_t pos = name.find('"');
+            size_t pos2 = name.find_last_of('"');
+            name = name.substr(pos + 1, pos2 - pos - 1);
+            return (new Enum(removeQuotes(inpth), wp, removeQuotes(name)));
         }
         else if (line.find("theCheckedException") != string::npos)
         {
-            getline(file, line);
-            string vis = protlvl(line);
-            *sfile << vis << "class " << name << " extends Exception {\n";
+            string name;
+            name = line.substr(line.find("theCheckedException(") + 9);
+            size_t pos = name.find(',');
+            string parent = "";
+            if (pos != string::npos)
+            {
+                name = name.substr(0, pos);
+                if (line.find("withParent(") != string::npos)
+                {
+                    parent = line.substr(line.find("withParent(") + 11);
+                    pos = parent.find(')');
+                    parent = parent.substr(0, pos);
+                    pos = parent.find('"');                 // this must be here
+                    size_t pos2 = parent.find_last_of('"'); // this must not be the same as above
+                    parent = parent.substr(pos + 1, pos2 - pos - 1);
+                    /*if (parent.find("of ") != string::npos) // this removes quotes // TODO this is wrong
+                    {
+                        parent = typeMaker(parent, nullptr);
+                    }*/
+                }
+            }
+            else
+            {
+                name = name.substr(0, name.find(')'));
+            }
+            pos = name.find('"');
+            size_t pos2 = name.find_last_of('"');
+            name = name.substr(pos + 1, pos2 - pos - 1);
+            return (new Exception(removeQuotes(inpth), wp, removeQuotes(name), removeQuotes(parent)));
         }
         else
         {
-            cout << "Unknown type of class\n";
-            cout << line << endl;
-            exit(1);
+            cout << "Unknown type of class\n"
+                 << line << endl;
+            file.close();
+            return nullptr;
         }
-        //  search for methods, fields, constructors
-        while (getline(file, line))
-        {
-            if (line.find("it.hasMethod") != string::npos)
-            {
-                createMethod(&file, sfile, line);
-            }
-            else if (line.find("it.hasConstructor") != string::npos)
-            {
-                createConstructor(&file, sfile, line, name);
-            }
-            else if (line.find("hasNoArgConstructor") != string::npos)
-            {
-                getline(file, line);
-                string vis = protlvl(line);
-                *sfile << "\t" << vis << name << "() {\n";
-                *sfile << "\t\t// TODO\n";
-                *sfile << "\t}\n";
-            }
-            else if (line.find("it.hasField") != string::npos)
-            {
-                createVar(&file, sfile, line);
-            }
-            else if (line.find("it.has(TEXTUAL_REPRESENTATION") != string::npos)
-            {
-                *sfile << "\t@Override\n";
-                *sfile << "\tpublic String toString() {\n";
-                *sfile << "\t\treturn \"TODO\";\n";
-                *sfile << "\t}\n";
-            }
-            else if (line.find("has(EQUALITY_CHECK") != string::npos)
-            {
-                *sfile << "\t@Override\n";
-                *sfile << "\tpublic boolean equals(Object obj) {\n";
-                *sfile << "\t\t// todo\n";
-                *sfile << "\t\treturn true;\n";
-                *sfile << "\t}\n";
-                // need to overwrite hashCode too
-                *sfile << "\t@Override\n";
-                *sfile << "\tpublic int hashCode() {\n";
-                *sfile << "\t\t// todo\n";
-                *sfile << "\t\treturn 1;\n";
-                *sfile << "\t}\n";
-            }
-            else if (line.find("has(HASH_CODE") != string::npos)
-            {
-                *sfile << "\t@Override\n";
-                *sfile << "\tpublic int hashCode() {\n";
-                *sfile << "\t\t// todo\n";
-                *sfile << "\t\treturn 1;\n";
-                *sfile << "\t}\n";
-            }
-        }
-        *sfile << "\n}";
+    }
+    else
+    {
+        std::cout << "Unable to open file: " << inpth << std::endl;
         file.close();
-        sfile->close(); // Close the ofstream properly -> VERY IMPORTANT!!! DO NOT REMOVE!!!
-        delete sfile;   // Delete the ofstream object to prevent memory leaks
+        return nullptr;
     }
-    else
-    {
-        std::cout << "Unable to open file";
-    }
-    // Make vector unique
+}
 
-    // Open the output file again to add imports
-    fstream file2(outfilename, ios::in);
-    vector<string> fileLines;
-    if (file2.is_open())
+int main(int argc, char **args)
+{
+    if (argc < 2)
     {
-        line = "";
-        while (getline(file2, line))
-        {
-            fileLines.push_back(line);
-            if (line.find("package ") != string::npos)
-            {
-                fileLines.push_back("");
-                for (string imp : imports)
-                {
-                    string temp = "import " + imp + ";";
-                    fileLines.push_back(temp);
-                }
-                fileLines.push_back("");
-            }
-        }
-        file2.close();
+        cout << "Usage: " << args[0] << " <input file>" << endl;
+        exit(1);
     }
-    else
+    Wrapper *wp = new Wrapper();
+    for (int i = 1; i < argc; i++)
     {
-        std::cout << "Unable to open file";
+        wp->addFile(getFile(args[i], wp));
     }
-    ofstream file3(outfilename);
-    for (size_t i = 0; i < fileLines.size(); i++)
-    {
-        file3 << fileLines[i] << endl;
-    }
+    wp->process();
+    delete wp;
     return 0;
 }

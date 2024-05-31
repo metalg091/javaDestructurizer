@@ -32,17 +32,23 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Find files with "StructureTest.java" in their name
-files=$(find "$dir" -name "*StructureTest.java")
+# If $dir is a file run test for only that file
+
+if [ -f "$dir" ]; then
+    # Check if the file is a java file
+    if [[ "$dir" != "*.java" ]]; then
+        echo "Not a java file"
+        exit 1
+    fi
+    files=$dir
+else
+    # Find files with "StructureTest.java" in their name
+    files=$(find "$dir" -name "*StructureTest.java")
+fi
 
 # Call the binary with each file as a parameter
 echo "################################################################################"
-for file in $files; do
-    ./generator.out "$file"
-    if [ $? -ne 0 ]; then
-        echo "Error occured $file"
-    fi
-done
+./generator.out $files
 echo "################################################################################"
 
 # Delete evidence
