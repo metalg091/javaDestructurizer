@@ -1124,8 +1124,8 @@ Method *createMethod(fstream *infile, string line, File *parent)
             }
             else
             {
-                tempReturnType = line.substr(line.find("thatReturns(") + 13);
-                tempReturnType = tempReturnType.substr(0, tempReturnType.find(")"));
+                tempReturnType = line.substr(line.find('"') + 1);
+                tempReturnType = tempReturnType.substr(0, tempReturnType.find('"'));
                 tempReturnType = typeMaker(tempReturnType, parent);
             }
         }
