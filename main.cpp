@@ -189,7 +189,7 @@ public:
     bool isStatic;
     Method(){};
     ~Method(){};
-    string toString()
+    string toString(bool hasBody)
     {
         string result = "\t" + visibility;
         if (isStatic)
@@ -205,49 +205,57 @@ public:
                 result += ", ";
             }
         }
-        result += ") {\n";
-        result += "\t\t// TODO\n";
-        // dummy return here
-        if (returnType != "void")
+        result += ")";
+        if (hasBody)
         {
-            if (returnType == "int")
+            result += " {\n";
+            result += "\t\t// TODO\n";
+            // dummy return here
+            if (returnType != "void")
             {
-                result += "\t\treturn 0;\n";
+                if (returnType == "int")
+                {
+                    result += "\t\treturn 0;\n";
+                }
+                else if (returnType == "double")
+                {
+                    result += "\t\treturn 0.0;\n";
+                }
+                else if (returnType == "float")
+                {
+                    result += "\t\treturn 0.0f;\n";
+                }
+                else if (returnType == "long")
+                {
+                    result += "\t\treturn 0L;\n";
+                }
+                else if (returnType == "char")
+                {
+                    result += "\t\treturn '0';\n";
+                }
+                else if (returnType == "byte")
+                {
+                    result += "\t\treturn (byte)0;\n";
+                }
+                else if (returnType == "short")
+                {
+                    result += "\t\treturn (short)0;\n";
+                }
+                else if (returnType == "boolean")
+                {
+                    result += "\t\treturn false;\n";
+                }
+                else
+                {
+                    result += "\t\treturn null;\n";
+                }
             }
-            else if (returnType == "double")
-            {
-                result += "\t\treturn 0.0;\n";
-            }
-            else if (returnType == "float")
-            {
-                result += "\t\treturn 0.0f;\n";
-            }
-            else if (returnType == "long")
-            {
-                result += "\t\treturn 0L;\n";
-            }
-            else if (returnType == "char")
-            {
-                result += "\t\treturn '0';\n";
-            }
-            else if (returnType == "byte")
-            {
-                result += "\t\treturn (byte)0;\n";
-            }
-            else if (returnType == "short")
-            {
-                result += "\t\treturn (short)0;\n";
-            }
-            else if (returnType == "boolean")
-            {
-                result += "\t\treturn false;\n";
-            }
-            else
-            {
-                result += "\t\treturn null;\n";
-            }
+            result += "\t}\n";
         }
-        result += "\t}\n";
+        else
+        {
+            result += ";\n";
+        }
         return result;
     }
 };
@@ -287,9 +295,13 @@ public:
     string package;
     string visibility;
     set<string> imports;
-    Wrapper *wrapper;
-    File(string pth) { this->testPath = pth; }; // default constructor
-    virtual ~File(){};                          // default destructor
+    Wrapper *wrapper; // DO NOT DELETE THIS!
+    File(string pth, Wrapper *wp)
+    {
+        this->testPath = pth;
+        this->wrapper = wp;
+    };
+    virtual ~File(){}; // default destructor
     virtual void process()
     {
         cout << "Error - Processing an abstract File\n";
@@ -303,7 +315,7 @@ public:
 class Enum : public File
 {
 public:
-    Enum(string inpth, string iname) : File(inpth)
+    Enum(string inpth, Wrapper *wp, string iname) : File(inpth, wp)
     {
         package = "";
         size_t pos = iname.find_last_of('.');
@@ -390,7 +402,7 @@ public:
 class Class : public File
 {
 public:
-    Class(string inpth, string iname, string iparent, string iinterface) : File(inpth)
+    Class(string inpth, Wrapper *wp, string iname, string iparent, string iinterface) : File(inpth, wp)
     {
         package = "";
         size_t pos = iname.find_last_of('.');
@@ -426,7 +438,7 @@ public:
         }
     }
     ~Class(){
-        // says double free
+        // TODO says double free
         /*for (std::size_t i = 0; i < fields.size(); i++)
         {
             delete &(fields[i]);
@@ -459,7 +471,6 @@ public:
             if (temppackage != package)
             {
                 hasImport = true;
-                cout << "import " << s << endl;
                 result += "import " + s + ";\n";
             }
         }
@@ -487,7 +498,7 @@ public:
         }
         for (std::size_t i = 0; i < methods.size(); i++)
         {
-            result += methods[i]->toString();
+            result += methods[i]->toString(true);
         }
         if (hasTextualRepresentation)
         {
@@ -586,7 +597,7 @@ public:
 class Interface : public File
 {
 public:
-    Interface(string inpth, string iname, string iinterface) : File(inpth)
+    Interface(string inpth, Wrapper *wp, string iname, string iinterface) : File(inpth, wp)
     {
         package = "";
         size_t pos = iname.find_last_of('.');
@@ -611,9 +622,43 @@ public:
     }
     ~Interface(){};
     string parentInterface; // its an interface
-    vector<Field> Fields;
-    vector<Method> methods;
-    string toString() { return "todo"; }
+    vector<Field *> fields;
+    vector<Method *> methods;
+    string toString()
+    {
+        string result = "package " + package + ";\n\n";
+        bool hasImport = false;
+        for (string s : imports)
+        {
+            size_t pos = s.find_last_of('.');
+            string temppackage = s.substr(0, pos);
+            if (temppackage != package)
+            {
+                hasImport = true;
+                result += "import " + s + ";\n";
+            }
+        }
+        if (hasImport)
+        {
+            result += "\n";
+        }
+        result += visibility + "interface " + name;
+        if (parentInterface != "")
+        {
+            result += " extends " + parentInterface;
+        }
+        result += " {\n";
+        for (std::size_t i = 0; i < fields.size(); i++)
+        {
+            result += fields[i]->toString();
+        }
+        for (std::size_t i = 0; i < methods.size(); i++)
+        {
+            result += methods[i]->toString(false);
+        }
+        result += "\n}";
+        return result;
+    }
     void toFile()
     {
         ofstream *p = createFile(package, name);
@@ -623,29 +668,48 @@ public:
             return;
         }
         *p << this->toString();
+        p->close();
+        delete p;
     }
     void process() override
     {
-        /*
+
+        fstream file(testPath);
+        string line;
+        bool go = true;
+        while (go && getline(file, line))
+        {
+            if (line.find("theInterface") != string::npos)
+            {
+                go = false;
+            }
+        }
+        getline(file, line);
+        visibility = protlvl(line);
         while (getline(file, line))
         {
             if (line.find("it.hasMethod") != string::npos)
             {
-                createMethod(&file, sfile, line);
+                methods.push_back(createMethod(&file, line, this));
+            }
+            else if (line.find("it.hasConstructor") != string::npos)
+            {
+                // interfaces don't have constructors
+                cout << "Error - Interface: " + name + " has constructor\n";
             }
             else if (line.find("it.hasField") != string::npos)
             {
-                createVar(&file, sfile, line);
+                fields.push_back(createField(&file, line, this));
             }
         }
-        */
+        file.close();
     }
 };
 
 class Exception : public File
 {
 public:
-    Exception(string inpth, string iname, string iparent) : File(inpth)
+    Exception(string inpth, Wrapper *wp, string iname, string iparent) : File(inpth, wp)
     {
         package = "";
         size_t pos = iname.find_last_of('.');
@@ -670,10 +734,48 @@ public:
     }
     ~Exception(){};
     string parentException;
-    vector<Field> Fields;
-    vector<Method> methods;
-    vector<Constructor> constructors;
-    string toString() { return "todo"; }
+    vector<Field *> fields;
+    vector<Method *> methods;
+    vector<Constructor *> constructors;
+    string toString()
+    {
+        string result = "package " + package + ";\n\n";
+        bool hasImport = false;
+        for (string s : imports)
+        {
+            size_t pos = s.find_last_of('.');
+            string temppackage = s.substr(0, pos);
+            if (temppackage != package)
+            {
+                hasImport = true;
+                result += "import " + s + ";\n";
+            }
+        }
+        if (hasImport)
+        {
+            result += "\n";
+        }
+        result += visibility + "class " + name;
+        if (parentException != "")
+        {
+            result += " extends " + parentException;
+        }
+        result += " {\n";
+        for (std::size_t i = 0; i < fields.size(); i++)
+        {
+            result += fields[i]->toString();
+        }
+        for (std::size_t i = 0; i < constructors.size(); i++)
+        {
+            result += constructors[i]->toString();
+        }
+        for (std::size_t i = 0; i < methods.size(); i++)
+        {
+            result += methods[i]->toString(true);
+        }
+        result += "\n}";
+        return result;
+    }
     void toFile()
     {
         ofstream *p = createFile(package, name);
@@ -683,63 +785,48 @@ public:
             return;
         }
         *p << this->toString();
+        p->close();
+        delete p;
     }
     void process() override
     {
-        /*
+        fstream file(testPath);
+        string line;
+        bool go = true;
+        while (go && getline(file, line))
+        {
+            if (line.find("theCheckedException") != string::npos)
+            {
+                go = false;
+            }
+        }
+        getline(file, line);
+        visibility = protlvl(line);
         while (getline(file, line))
         {
             if (line.find("it.hasMethod") != string::npos)
             {
-                createMethod(&file, sfile, line);
+                methods.push_back(createMethod(&file, line, this));
             }
             else if (line.find("it.hasConstructor") != string::npos)
             {
-                createConstructor(&file, sfile, line, name);
+                constructors.push_back(createConstructor(&file, line, this));
             }
             else if (line.find("hasNoArgConstructor") != string::npos)
             {
                 getline(file, line);
                 string vis = protlvl(line);
-                *sfile << "\t" << vis << name << "() {\n";
-                *sfile << "\t\t// TODO\n";
-                *sfile << "\t}\n";
+                Constructor *c = new Constructor();
+                c->name = this->name;
+                c->visibility = vis;
+                constructors.push_back(c);
             }
             else if (line.find("it.hasField") != string::npos)
             {
-                createVar(&file, sfile, line);
-            }
-            else if (line.find("it.has(TEXTUAL_REPRESENTATION") != string::npos)
-            {
-                *sfile << "\t@Override\n";
-                *sfile << "\tpublic String toString() {\n";
-                *sfile << "\t\treturn \"TODO\";\n";
-                *sfile << "\t}\n";
-            }
-            else if (line.find("has(EQUALITY_CHECK") != string::npos)
-            {
-                *sfile << "\t@Override\n";
-                *sfile << "\tpublic boolean equals(Object obj) {\n";
-                *sfile << "\t\t// todo\n";
-                *sfile << "\t\treturn true;\n";
-                *sfile << "\t}\n";
-                // need to overwrite hashCode too
-                *sfile << "\t@Override\n";
-                *sfile << "\tpublic int hashCode() {\n";
-                *sfile << "\t\t// todo\n";
-                *sfile << "\t\treturn 1;\n";
-                *sfile << "\t}\n";
-            }
-            else if (line.find("has(HASH_CODE") != string::npos)
-            {
-                *sfile << "\t@Override\n";
-                *sfile << "\tpublic int hashCode() {\n";
-                *sfile << "\t\t// todo\n";
-                *sfile << "\t\treturn 1;\n";
-                *sfile << "\t}\n";
+                fields.push_back(createField(&file, line, this));
             }
         }
-        */
+        file.close();
     }
 };
 
@@ -1076,6 +1163,10 @@ Constructor *createConstructor(fstream *infile, string line, File *parent)
                 pair<string, string> tempPair = typeNameSeparator(tempV[i], parent);
                 string temptype = tempPair.first;
                 string tempname = tempPair.second;
+                if (tempname == "todoName")
+                {
+                    tempname = "todoName" + to_string(i);
+                }
                 tempParamTypes.push_back(temptype);
                 tempParamNames.push_back(tempname);
             }
@@ -1094,7 +1185,7 @@ Constructor *createConstructor(fstream *infile, string line, File *parent)
     return c;
 }
 
-File *getFile(string inpth) // nullptr == fail
+File *getFile(string inpth, Wrapper *wp) // nullptr == fail
 {
     fstream file(inpth);
     string line;
@@ -1127,7 +1218,7 @@ File *getFile(string inpth) // nullptr == fail
                     pos = parent.find('"');                 // this must be here
                     size_t pos2 = parent.find_last_of('"'); // this must not be the same as above
                     parent = parent.substr(pos + 1, pos2 - pos - 1);
-                    /*if (parent.find("of ") != string::npos) // this removes quotes // this is wrong
+                    /*if (parent.find("of ") != string::npos) // this removes quotes // TODO this is wrong
                     {
                         parent = typeMaker(parent, nullptr);
                     }*/
@@ -1149,7 +1240,7 @@ File *getFile(string inpth) // nullptr == fail
             pos = name.find('"');
             size_t pos2 = name.find_last_of('"');
             name = name.substr(pos + 1, pos2 - pos - 1);
-            return (new Class(inpth, name, parent, interface));
+            return (new Class(inpth, wp, name, parent, interface));
         }
         else if (line.find("theInterface") != string::npos)
         {
@@ -1174,7 +1265,7 @@ File *getFile(string inpth) // nullptr == fail
             {
                 name = name.substr(0, name.find(')'));
             }
-            return (new Interface(inpth, name, interface));
+            return (new Interface(inpth, wp, name, interface));
         }
         else if (line.find("theEnum") != string::npos)
         {
@@ -1184,7 +1275,7 @@ File *getFile(string inpth) // nullptr == fail
             size_t pos = name.find('"');
             size_t pos2 = name.find_last_of('"');
             name = name.substr(pos + 1, pos2 - pos - 1);
-            return (new Enum(inpth, name));
+            return (new Enum(inpth, wp, name));
         }
         else if (line.find("theCheckedException") != string::npos)
         {
@@ -1203,7 +1294,7 @@ File *getFile(string inpth) // nullptr == fail
                     pos = parent.find('"');                 // this must be here
                     size_t pos2 = parent.find_last_of('"'); // this must not be the same as above
                     parent = parent.substr(pos + 1, pos2 - pos - 1);
-                    /*if (parent.find("of ") != string::npos) // this removes quotes // this is wrong
+                    /*if (parent.find("of ") != string::npos) // this removes quotes // TODO this is wrong
                     {
                         parent = typeMaker(parent, nullptr);
                     }*/
@@ -1216,12 +1307,12 @@ File *getFile(string inpth) // nullptr == fail
             pos = name.find('"');
             size_t pos2 = name.find_last_of('"');
             name = name.substr(pos + 1, pos2 - pos - 1);
-            return (new Exception(inpth, name, parent));
+            return (new Exception(inpth, wp, name, parent));
         }
         else
         {
-            cout << "Unknown type of class\n";
-            cout << line << endl;
+            cout << "Unknown type of class\n"
+                 << line << endl;
             file.close();
             return nullptr;
         }
@@ -1244,7 +1335,7 @@ int main(int argc, char **args)
     Wrapper *wp = new Wrapper();
     for (int i = 1; i < argc; i++)
     {
-        wp->addFile(getFile(args[i]));
+        wp->addFile(getFile(args[i], wp));
     }
     wp->process();
     delete wp;
