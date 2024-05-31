@@ -126,26 +126,38 @@ public:
         }
         if (isFinal)
         {
-            result += "final ";
+            result += "final " + type + " " + name;
+            // final fields need to be initialized
+            if (type == "int" || type == "double" || type == "float" || type == "long" || type == "char" || type == "byte" || type == "short")
+            {
+                result += " = 0; //TODO\n";
+            }
+            else if (type == "boolean")
+            {
+                result += " = false; //TODO\n";
+            }
+            else
+            {
+                result += " = null; //TODO\n";
+            }
         }
-        result += type + " " + name + ";\n";
+        else
+        {
+            result += type + " " + name + ";\n";
+        }
         if (hasGetter)
         {
             result += "\n\tpublic " + type + " get" + static_cast<char>(toupper(name[0])) + name.substr(1) + "() {\n";
             result += "\t\treturn " + name + ";\n";
             result += "\t}\n";
         }
-        if (hasSetter)
+        if (!isFinal && hasSetter) // final fields can't have setters
         {
-            cout << "name: " << name << endl;
             result += "\n\tpublic void set" + static_cast<char>(toupper(this->name[0])) + name.substr(1) + "(" + type + " " + name + ") {\n";
             result += "\t\t// TODO\n";
             result += "\t\tthis." + name + " = " + name + ";\n";
             result += "\t}\n";
         }
-        cout << "name: " << name << endl;
-        cout << "type: " << type << endl;
-        cout << "result: " << result << endl;
         return result;
     }
 };
@@ -180,51 +192,45 @@ public:
         result += ") {\n";
         result += "\t\t// TODO\n";
         // dummy return here
-
-        /*
         if (returnType != "void")
+        {
+            if (returnType == "int")
             {
-                if (returnType == "int")
-                {
-                    *outfile << "\t\treturn 0;\n";
-                }
-                else if (returnType == "double")
-                {
-                    *outfile << "\t\treturn 0.0;\n";
-                }
-                else if (returnType == "float")
-                {
-                    *outfile << "\t\treturn 0.0f;\n";
-                }
-                else if (returnType == "long")
-                {
-                    *outfile << "\t\treturn 0L;\n";
-                }
-                else if (returnType == "char")
-                {
-                    *outfile << "\t\treturn '0';\n";
-                }
-                else if (returnType == "byte")
-                {
-                    *outfile << "\t\treturn (byte)0;\n";
-                }
-                else if (returnType == "short")
-                {
-                    *outfile << "\t\treturn (short)0;\n";
-                }
-                else if (returnType == "boolean")
-                {
-                    *outfile << "\t\treturn false;\n";
-                }
-                else
-                {
-                    *outfile << "\t\treturn null;\n";
-                }
+                result += "\t\treturn 0;\n";
             }
-            *outfile << "\t}\n";
-        */
-
-        //
+            else if (returnType == "double")
+            {
+                result += "\t\treturn 0.0;\n";
+            }
+            else if (returnType == "float")
+            {
+                result += "\t\treturn 0.0f;\n";
+            }
+            else if (returnType == "long")
+            {
+                result += "\t\treturn 0L;\n";
+            }
+            else if (returnType == "char")
+            {
+                result += "\t\treturn '0';\n";
+            }
+            else if (returnType == "byte")
+            {
+                result += "\t\treturn (byte)0;\n";
+            }
+            else if (returnType == "short")
+            {
+                result += "\t\treturn (short)0;\n";
+            }
+            else if (returnType == "boolean")
+            {
+                result += "\t\treturn false;\n";
+            }
+            else
+            {
+                result += "\t\treturn null;\n";
+            }
+        }
         result += "\t}\n";
         return result;
     }
@@ -269,11 +275,11 @@ public:
     virtual ~File(){};                          // default destructor
     virtual void process()
     {
-        cout << "Error - Processing File\n";
+        cout << "Error - Processing an abstract File\n";
     }
     virtual void toFile()
     {
-        cout << "Error - Writing File\n";
+        cout << "Error - Writing to abstract File\n";
     }
 };
 
@@ -760,6 +766,47 @@ public:
 File *getFile(string inpth); // nullptr == fail
 string typeMaker(string type, File *parent);
 pair<string, string> typeNameSeparator(string line, File *parent);
+void importMaker(string type, File *parent);
+
+// makes all necessary imports from typemaker
+void importMaker(string type, File *parent)
+{
+    // type one -> some.package.name"
+    // type two -> some.package.name[]
+    // type three -> some.package.name<some.package.name>
+    // type four -> some.package.name<some.package.name, some.package.name>
+    // combinations like some.package.name<some.package.name[], some.package.name>
+    if (type.find("[]") != string::npos)
+    {
+        string type1 = type.substr(0, type.find("[]"));
+        string type2 = type.substr(type.find("[]") + 2);
+        importMaker(type1, parent);
+        importMaker(type2, parent);
+        return;
+    }
+    if (type.find("<") != string::npos && type.find(">") != string::npos)
+    {
+        string type1 = type.substr(0, type.find("<"));
+        string type2 = type.substr(type.find("<") + 1);
+        type2 = type2.substr(0, type2.find_last_of(">"));
+        importMaker(type1, parent);
+        importMaker(type2, parent);
+        return;
+    }
+    if (type.find(",") != string::npos)
+    {
+        string type1 = type.substr(0, type.find(","));
+        string type2 = type.substr(type.find(",") + 2);
+        importMaker(type1, parent);
+        importMaker(type2, parent);
+        return;
+    }
+    if (type.find(".") != string::npos)
+    {
+        parent->imports.insert(removeQuotes(type));
+    }
+    return;
+}
 
 // check for list and arrays (never seen a set or map in a test) => there is a map in one of the tests
 string typeMaker(string type, File *parent)
@@ -825,7 +872,7 @@ string typeMaker(string type, File *parent)
     {
         if (parent != nullptr)
         {
-            parent->imports.insert(type);
+            importMaker(type, parent);
         }
         type = type.substr(type.find_last_of('.') + 1);
     }
@@ -902,7 +949,7 @@ Field *createField(fstream *infile, string line, File *parent)
         f->isFinal = false;
     }
     getline(*infile, line);
-    if (line.find("thatHas(") != string::npos)
+    if (line.find("thatHas(") != string::npos && line.find("thatHasNo(") == string::npos)
     {
         if (line.find("GETTER") != string::npos)
         {
@@ -1173,7 +1220,7 @@ File *getFile(string inpth) // nullptr == fail
     }
     else
     {
-        std::cout << "Unable to open file";
+        std::cout << "Unable to open file: " << inpth << std::endl;
         file.close();
         return nullptr;
     }
