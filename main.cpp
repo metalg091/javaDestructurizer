@@ -127,10 +127,10 @@ public:
     string name;
     string type;
     string visibility;
-    bool isStatic;
-    bool isFinal;
-    bool hasGetter;
-    bool hasSetter;
+    bool isStatic = false;
+    bool isFinal = false;
+    bool hasGetter = false;
+    bool hasSetter = false;
     Field(){};
     ~Field(){};
     string toString()
@@ -186,7 +186,7 @@ public:
     string returnType;
     vector<string> paramTypes;
     vector<string> paramNames;
-    bool isStatic;
+    bool isStatic = false;
     Method(){};
     ~Method(){};
     string toString(bool hasBody)
@@ -662,7 +662,6 @@ public:
     }
     void toFile()
     {
-        cout << "name " << name << " package " + package + ";\n\n";
         ofstream *p = createFile(package, name);
         if (p == nullptr)
         {
@@ -930,7 +929,7 @@ string typeMaker(string type, File *parent)
         string temp = type.substr(type.find("of ") + 3);
         string key = temp.substr(0, temp.find(" to "));
         string value = temp.substr(temp.find(" to ") + 4);
-        type = "HashMap<" + key + ", " + value + ">";
+        type = "HashMap<" + typeMaker(key, parent) + ", " + typeMaker(value, parent) + ">";
     }
     else if (type.find("of ") != string::npos) // try to autocomplete unimplemented types
     {
