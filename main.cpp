@@ -530,7 +530,6 @@ public:
     }
     void toFile()
     {
-        cout << "Creating file: " << name << ".java\n";
         ofstream *p = createFile(package, name);
         if (p == nullptr)
         {
@@ -663,6 +662,7 @@ public:
     }
     void toFile()
     {
+        cout << "name " << name << " package " + package + ";\n\n";
         ofstream *p = createFile(package, name);
         if (p == nullptr)
         {
@@ -1124,8 +1124,8 @@ Method *createMethod(fstream *infile, string line, File *parent)
             }
             else
             {
-                tempReturnType = line.substr(line.find("thatReturns(\"") + 13);
-                tempReturnType = tempReturnType.substr(0, tempReturnType.find("\")"));
+                tempReturnType = line.substr(line.find("thatReturns(") + 13);
+                tempReturnType = tempReturnType.substr(0, tempReturnType.find(")"));
                 tempReturnType = typeMaker(tempReturnType, parent);
             }
         }
@@ -1242,7 +1242,7 @@ File *getFile(string inpth, Wrapper *wp) // nullptr == fail
             pos = name.find('"');
             size_t pos2 = name.find_last_of('"');
             name = name.substr(pos + 1, pos2 - pos - 1);
-            return (new Class(inpth, wp, name, parent, interface));
+            return (new Class(removeQuotes(inpth), wp, removeQuotes(name), removeQuotes(parent), removeQuotes(interface)));
         }
         else if (line.find("theInterface") != string::npos)
         {
@@ -1267,7 +1267,7 @@ File *getFile(string inpth, Wrapper *wp) // nullptr == fail
             {
                 name = name.substr(0, name.find(')'));
             }
-            return (new Interface(inpth, wp, name, interface));
+            return (new Interface(removeQuotes(inpth), wp, removeQuotes(name), removeQuotes(interface)));
         }
         else if (line.find("theEnum") != string::npos)
         {
@@ -1277,7 +1277,7 @@ File *getFile(string inpth, Wrapper *wp) // nullptr == fail
             size_t pos = name.find('"');
             size_t pos2 = name.find_last_of('"');
             name = name.substr(pos + 1, pos2 - pos - 1);
-            return (new Enum(inpth, wp, name));
+            return (new Enum(removeQuotes(inpth), wp, removeQuotes(name)));
         }
         else if (line.find("theCheckedException") != string::npos)
         {
@@ -1309,7 +1309,7 @@ File *getFile(string inpth, Wrapper *wp) // nullptr == fail
             pos = name.find('"');
             size_t pos2 = name.find_last_of('"');
             name = name.substr(pos + 1, pos2 - pos - 1);
-            return (new Exception(inpth, wp, name, parent));
+            return (new Exception(removeQuotes(inpth), wp, removeQuotes(name), removeQuotes(parent)));
         }
         else
         {
