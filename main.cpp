@@ -27,7 +27,7 @@ class Exception;
 Field *createField(fstream *infile, string line, File *parent);
 Method *createMethod(fstream *infile, string line, File *parent);
 Constructor *createConstructor(fstream *infile, string line, File *parent);
-File *getFile(string inpth); // nullptr == fail
+File *getFile(string inpth, Wrapper *wp); // nullptr == fail
 string typeMaker(string type, File *parent);
 pair<string, string> typeNameSeparator(string line, File *parent);
 void importMaker(string type, File *parent);
@@ -303,8 +303,8 @@ public:
                 }
             }
             result += ") {\n";
+            result += "\t\t// TODO\n";
         }
-        result += "\t\t// TODO\n";
         result += "\t}\n";
         return result;
     }
@@ -909,6 +909,26 @@ public:
             files[i]->toFile();
         }
     }
+    File *getParent(string name)
+    {
+        File *result = nullptr;
+        for (std::size_t i = 0; i < files.size(); i++)
+        {
+            if (files[i]->name == name)
+            {
+                if (result == nullptr)
+                {
+                    result = files[i];
+                }
+                else
+                {
+                    cout << "**Error** - Multiple potential parents!\n";
+                    return nullptr;
+                }
+            }
+        }
+        return result;
+    }
 };
 
 // makes all necessary imports from typemaker
@@ -1200,7 +1220,6 @@ Constructor *createConstructor(fstream *infile, string line, File *parent)
     {
         if (line.find("withArgsAsInParent") != string::npos) // using the File class we can search for these
         {
-            cout << "**WARNING** Constructor withArgsAsInParent\n";
             c->simParent = true;
         }
         else if (line.find("withArgsSimilarToFields") != string::npos) // using the File class we can search for these
@@ -1286,7 +1305,57 @@ string getSpecialParam(void *caller, int type, int parenttype, vector<string> pa
         }
         else if (type == 1)
         {
-            result += "TODO simParent){\n ";
+            File *parent = c->wrapper->getParent(c->parent);
+            if (parent == nullptr)
+            {
+                result += "TODO simParent){\n ";
+            }
+            else
+            {
+                Class *classParent = dynamic_cast<Class *>(parent);
+                if (classParent != nullptr)
+                {
+                    Constructor *constructor = nullptr;
+                    std::size_t prtc = 0;
+                    for (std::size_t i = 0; i < classParent->constructors.size(); i++)
+                    {
+                        if (classParent->constructors[i]->paramTypes.size() > prtc)
+                        {
+                            constructor = classParent->constructors[i];
+                        }
+                    }
+                    if (constructor == nullptr)
+                    {
+                        result += "TODO simParent){\n ";
+                    }
+                    else
+                    {
+                        for (std::size_t i = 0; i < constructor->paramTypes.size(); i++)
+                        {
+                            result += constructor->paramTypes[i] + " " + constructor->paramNames[i];
+                            if (i != constructor->paramTypes.size() - 1)
+                            {
+                                result += ", ";
+                            }
+                        }
+                        result += ") {\n";
+                        result += "\t\tsuper(";
+                        for (std::size_t i = 0; i < constructor->paramNames.size(); i++)
+                        {
+                            result += constructor->paramNames[i];
+                            if (i != constructor->paramNames.size() - 1)
+                            {
+                                result += ", ";
+                            }
+                        }
+                        result += ");\n\t\t//TODO\n";
+                    }
+                }
+                else
+                {
+                    result += "TODO simParent){\n ";
+                }
+            }
         }
     }
     else if (parenttype == 1) // I have no idea how to do this better :/
@@ -1317,8 +1386,57 @@ string getSpecialParam(void *caller, int type, int parenttype, vector<string> pa
         }
         else if (type == 1)
         {
-            result += "TODO simParent){\n ";
-            result += ") {\n}\n";
+            File *parent = e->wrapper->getParent(e->parentException);
+            if (parent == nullptr)
+            {
+                result += "TODO simParent){\n ";
+            }
+            else
+            {
+                Exception *exceptionParent = dynamic_cast<Exception *>(parent);
+                if (exceptionParent != nullptr)
+                {
+                    Constructor *constructor = nullptr;
+                    std::size_t prtc = 0;
+                    for (std::size_t i = 0; i < exceptionParent->constructors.size(); i++)
+                    {
+                        if (exceptionParent->constructors[i]->paramTypes.size() > prtc)
+                        {
+                            constructor = exceptionParent->constructors[i];
+                        }
+                    }
+                    if (constructor == nullptr)
+                    {
+                        result += "TODO simParent){\n ";
+                    }
+                    else
+                    {
+                        for (std::size_t i = 0; i < constructor->paramTypes.size(); i++)
+                        {
+                            result += constructor->paramTypes[i] + " " + constructor->paramNames[i];
+                            if (i != constructor->paramTypes.size() - 1)
+                            {
+                                result += ", ";
+                            }
+                        }
+                        result += ") {\n";
+                        result += "\t\tsuper(";
+                        for (std::size_t i = 0; i < constructor->paramNames.size(); i++)
+                        {
+                            result += constructor->paramNames[i];
+                            if (i != constructor->paramNames.size() - 1)
+                            {
+                                result += ", ";
+                            }
+                        }
+                        result += ");\n\t\t//TODO\n";
+                    }
+                }
+                else
+                {
+                    result += "TODO simParent){\n ";
+                }
+            }
         }
     }
     return result;
@@ -1471,7 +1589,7 @@ int main(int argc, char **args)
         cout << "Usage: " << args[0] << " <input file>" << endl;
         exit(1);
     }
-    Wrapper *wp = new Wrapper();
+    Wrapper *wp = new Wrapper(); // this is a global variable
     for (int i = 1; i < argc; i++)
     {
         wp->addFile(getFile(args[i], wp));
