@@ -44,11 +44,12 @@ if [ -f "$dir" ]; then
 else
     # Find files with "StructureTest.java" in their name
     files=$(find "$dir" -name "*StructureTest.java")
+    suite=$(find "$dir" -name "*Suite.java")
 fi
 
 # Call the binary with each file as a parameter
 echo "################################################################################"
-./generator.out $files
+./generator.out $files $suite
 echo "################################################################################"
 
 # Delete evidence

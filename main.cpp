@@ -890,6 +890,7 @@ public:
         }
     }
     vector<File *> files;
+    vector<string> testSuites;
     void addFile(File *file)
     {
         if (file != nullptr)
@@ -907,6 +908,83 @@ public:
         for (std::size_t i = 0; i < files.size(); i++)
         {
             files[i]->toFile();
+        }
+        vector<string> testFiles;
+        vector<string> imports;
+        for (std::size_t i = 0; i < testSuites.size(); i++)
+        {
+            fstream file(testSuites[i]);
+            string line;
+            while (getline(file, line))
+            {
+                if (line.find("import") != string::npos)
+                {
+                    imports.push_back(line.substr(line.find("import") + 7, line.find(';') - 7)); // 6 for import 1 for extra space, -7 because second param is lenght
+                }
+                if (line.find("@SelectClasses") != string::npos)
+                {
+                    bool b = true;
+                    while (b && getline(file, line))
+                    {
+                        if (line.find("@") != string::npos)
+                        {
+                            b = false;
+                        }
+                        if (line.find("Test.class") != string::npos && line.find("StructureTest.class") == string::npos)
+                        {
+                            while (line.find(' ') != string::npos)
+                            {
+                                line = line.substr(0, line.find(' ')) + line.substr(line.find(' ') + 1);
+                            }
+                            while (line.find(',') != string::npos)
+                            {
+                                line = line.substr(0, line.find(',')) + line.substr(line.find(',') + 1);
+                            }
+                            while (line.find('\t') != string::npos)
+                            {
+                                line = line.substr(0, line.find('\t')) + line.substr(line.find('\t') + 1);
+                            }
+                            line = line.substr(0, line.find(".class"));
+                            testFiles.push_back(line);
+                        }
+                    }
+                }
+            }
+            file.close();
+        }
+        for (std::size_t i = 0; i < testFiles.size(); i++)
+        {
+            string search = testFiles[i];
+            string package = "";
+            /* Search in files? -> don't do this every test class is imported
+            search = search.substr(0, search.find("Test"));
+            for (std::size_t j = 0; j < files.size(); j++)
+            {
+                if (files[j]->name == search)
+                {
+                    package += files[j]->package;
+                    break;
+                }
+            }
+            */
+            for (std::size_t j = 0; j < imports.size(); j++)
+            {
+                if (search == imports[j].substr(imports[j].find_last_of('.') + 1))
+                {
+                    package += imports[j].substr(0, imports[j].find_last_of('.'));
+                }
+            }
+            ofstream *outfile = createFile(package, testFiles[i]);
+            if (package == "")
+            {
+                cout << "**ERROR** - Unkonw test file path!\n";
+            }
+            *outfile << "package " << package << ";\n\n";
+            *outfile
+                << "import static check.CheckThat.*;\nimport static org.junit.jupiter.api.Assertions.*;\nimport org.junit.jupiter.api.*;\nimport org.junit.jupiter.api.condition.*;\nimport org.junit.jupiter.api.extension.*;\nimport org.junit.jupiter.params.*;\nimport org.junit.jupiter.params.provider.*;\nimport check.*;\n\n";
+            *outfile << "public class " << testFiles[i] << "{\n\t//TODO\n}";
+            outfile->close();
+            delete outfile;
         }
     }
     File *getParent(string name)
@@ -1603,7 +1681,14 @@ int main(int argc, char **args)
     Wrapper *wp = new Wrapper(); // this is a global variable
     for (int i = 1; i < argc; i++)
     {
-        wp->addFile(getFile(args[i], wp));
+        if (static_cast<string>(args[i]).find("Suite.java") != string::npos)
+        {
+            wp->testSuites.push_back(args[i]);
+        }
+        else
+        {
+            wp->addFile(getFile(args[i], wp));
+        }
     }
     wp->process();
     delete wp;
