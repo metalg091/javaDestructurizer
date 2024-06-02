@@ -1257,6 +1257,17 @@ Constructor *createConstructor(fstream *infile, string line, File *parent)
             tempParamTypes.push_back("unimplemented");
             tempParamNames.push_back("unimplemented");
         }
+    }
+    else if (line.find("hasConstructorWithParams"))
+    {
+        string temp = line.substr(line.find('(') + 1);
+        temp = temp.substr(0, temp.find(')'));
+        vector<string> tempV = split(temp, ", ");
+        for (std::size_t i = 0; i < tempV.size(); i++)
+        {
+            tempParamTypes.push_back(typeMaker(tempV[i], parent));
+            tempParamNames.push_back("todoName" + to_string(i));
+        }
     } // else no params
     c->paramNames = tempParamNames;
     c->paramTypes = tempParamTypes;
