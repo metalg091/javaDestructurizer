@@ -163,13 +163,14 @@ public:
         }
         if (hasGetter)
         {
-            result += "\n\tpublic " + type + " get" + static_cast<char>(toupper(name[0])) + name.substr(1) + "() {\n";
+            result += "\tpublic " + type + " get" + static_cast<char>(toupper(name[0])) + name.substr(1) + "() {\n";
             result += "\t\treturn " + name + ";\n";
             result += "\t}\n";
         }
         if (!isFinal && hasSetter) // final fields can't have setters
         {
-            result += "\n\tpublic void set" + static_cast<char>(toupper(this->name[0])) + name.substr(1) + "(" + type + " " + name + ") {\n";
+            result += "\tpublic void set";
+            result += static_cast<char>(toupper(name[0])) + name.substr(1) + "(" + type + " " + name + ") {\n";
             result += "\t\t// TODO\n";
             result += "\t\tthis." + name + " = " + name + ";\n";
             result += "\t}\n";
@@ -525,7 +526,7 @@ public:
             result += "\t\treturn 1;\n";
             result += "\t}\n";
         }
-        result += "\n}";
+        result += "}";
         return result;
     }
     void toFile()
