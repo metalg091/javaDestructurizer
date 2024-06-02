@@ -163,14 +163,14 @@ public:
         }
         if (hasGetter)
         {
-            result += "\tpublic " + type + " get" + static_cast<char>(toupper(name[0])) + name.substr(1) + "() {\n";
+            result += "\tpublic " + type + " get" + std::string(1, static_cast<char>(toupper(name[0]))) + name.substr(1) + "() {\n";
             result += "\t\treturn " + name + ";\n";
             result += "\t}\n";
         }
         if (!isFinal && hasSetter) // final fields can't have setters
         {
             result += "\tpublic void set";
-            result += static_cast<char>(toupper(name[0])) + name.substr(1) + "(" + type + " " + name + ") {\n";
+            result += std::string(1, static_cast<char>(toupper(name[0]))) + name.substr(1) + "(" + type + " " + name + ") {\n";
             result += "\t\t// TODO\n";
             result += "\t\tthis." + name + " = " + name + ";\n";
             result += "\t}\n";
