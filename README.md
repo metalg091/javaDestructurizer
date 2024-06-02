@@ -2,6 +2,7 @@
 
 This is a tool that converts Java structure tests (given on Java exams in ELTE) to the skeleton of the Java Project.
 The generated code *should* be able to pass the test suite immediately after generation!!!
+
 It:
 
 - creates the files
