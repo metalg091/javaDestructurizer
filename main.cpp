@@ -27,10 +27,11 @@ class Exception;
 Field *createField(fstream *infile, string line, File *parent);
 Method *createMethod(fstream *infile, string line, File *parent);
 Constructor *createConstructor(fstream *infile, string line, File *parent);
-File *getFile(string inpth); // nullptr == fail
+File *getFile(string inpth, Wrapper *wp); // nullptr == fail
 string typeMaker(string type, File *parent);
 pair<string, string> typeNameSeparator(string line, File *parent);
 void importMaker(string type, File *parent);
+string getSpecialParam(void *caller, int type, int parenttype, vector<string> paramNames, bool isConstructor);
 
 vector<string> split(string s, string delimiter)
 {
@@ -127,10 +128,10 @@ public:
     string name;
     string type;
     string visibility;
-    bool isStatic;
-    bool isFinal;
-    bool hasGetter;
-    bool hasSetter;
+    bool isStatic = false;
+    bool isFinal = false;
+    bool hasGetter = false;
+    bool hasSetter = false;
     Field(){};
     ~Field(){};
     string toString()
@@ -163,13 +164,14 @@ public:
         }
         if (hasGetter)
         {
-            result += "\n\tpublic " + type + " get" + static_cast<char>(toupper(name[0])) + name.substr(1) + "() {\n";
+            result += "\tpublic " + type + " get" + std::string(1, static_cast<char>(toupper(name[0]))) + name.substr(1) + "() {\n";
             result += "\t\treturn " + name + ";\n";
             result += "\t}\n";
         }
         if (!isFinal && hasSetter) // final fields can't have setters
         {
-            result += "\n\tpublic void set" + static_cast<char>(toupper(this->name[0])) + name.substr(1) + "(" + type + " " + name + ") {\n";
+            result += "\tpublic void set";
+            result += std::string(1, static_cast<char>(toupper(name[0]))) + name.substr(1) + "(" + type + " " + name + ") {\n";
             result += "\t\t// TODO\n";
             result += "\t\tthis." + name + " = " + name + ";\n";
             result += "\t}\n";
@@ -186,10 +188,11 @@ public:
     string returnType;
     vector<string> paramTypes;
     vector<string> paramNames;
-    bool isStatic;
+    bool isStatic = false;
+    bool simField = false;
     Method(){};
     ~Method(){};
-    string toString(bool hasBody)
+    string toString(bool hasBody, void *caller, int type) // type 0 -> class, type 1 -> exception, type 2 -> interface
     {
         string result = "\t" + visibility;
         if (isStatic)
@@ -197,15 +200,22 @@ public:
             result += "static ";
         }
         result += returnType + " " + name + "(";
-        for (std::size_t i = 0; i < paramTypes.size(); i++)
+        if (simField)
         {
-            result += paramTypes[i] + " " + paramNames[i];
-            if (i != paramTypes.size() - 1)
-            {
-                result += ", ";
-            }
+            result += getSpecialParam(caller, 0, 0, paramNames, false);
         }
-        result += ")";
+        else
+        {
+            for (std::size_t i = 0; i < paramTypes.size(); i++)
+            {
+                result += paramTypes[i] + " " + paramNames[i];
+                if (i != paramTypes.size() - 1)
+                {
+                    result += ", ";
+                }
+            }
+            result += ")";
+        }
         if (hasBody)
         {
             result += " {\n";
@@ -267,21 +277,34 @@ public:
     string visibility;
     vector<string> paramTypes;
     vector<string> paramNames;
+    bool simField = false;
+    bool simParent = false;
     Constructor(){};
     ~Constructor(){};
-    string toString()
+    string toString(void *caller, int type) // type 0 -> class, type 1 -> exception
     {
         string result = "\t" + visibility + name + "(";
-        for (std::size_t i = 0; i < paramTypes.size(); i++)
+        if (simField)
         {
-            result += paramTypes[i] + " " + paramNames[i];
-            if (i != paramTypes.size() - 1)
-            {
-                result += ", ";
-            }
+            result += getSpecialParam(caller, 0, type, paramNames, true);
         }
-        result += ") {\n";
-        result += "\t\t// TODO\n";
+        else if (simParent)
+        {
+            result += getSpecialParam(caller, 1, type, paramNames, true);
+        }
+        else
+        {
+            for (std::size_t i = 0; i < paramTypes.size(); i++)
+            {
+                result += paramTypes[i] + " " + paramNames[i];
+                if (i != paramTypes.size() - 1)
+                {
+                    result += ", ";
+                }
+            }
+            result += ") {\n";
+            result += "\t\t// TODO\n";
+        }
         result += "\t}\n";
         return result;
     }
@@ -439,20 +462,20 @@ public:
             imports.insert(interfacepckg + "." + iinterface);
         }
     }
-    ~Class(){
-        // TODO says double free
-        /*for (std::size_t i = 0; i < fields.size(); i++)
+    ~Class()
+    {
+        for (std::size_t i = 0; i < fields.size(); i++)
         {
-            delete &(fields[i]);
+            delete (fields[i]);
         }
         for (std::size_t i = 0; i < methods.size(); i++)
         {
-            delete &(methods[i]);
+            delete (methods[i]);
         }
         for (std::size_t i = 0; i < constructors.size(); i++)
         {
-            delete &(constructors[i]);
-        }*/
+            delete (constructors[i]);
+        }
     };
     string parent;    // its a class
     string interface; // its an interface
@@ -496,11 +519,11 @@ public:
         }
         for (std::size_t i = 0; i < constructors.size(); i++)
         {
-            result += constructors[i]->toString();
+            result += constructors[i]->toString(this, 0);
         }
         for (std::size_t i = 0; i < methods.size(); i++)
         {
-            result += methods[i]->toString(true);
+            result += methods[i]->toString(true, this, 0);
         }
         if (hasTextualRepresentation)
         {
@@ -525,7 +548,7 @@ public:
             result += "\t\treturn 1;\n";
             result += "\t}\n";
         }
-        result += "\n}";
+        result += "}";
         return result;
     }
     void toFile()
@@ -621,7 +644,17 @@ public:
             imports.insert(interfacepckg + "." + iinterface);
         }
     }
-    ~Interface(){};
+    ~Interface()
+    {
+        for (std::size_t i = 0; i < fields.size(); i++)
+        {
+            delete (fields[i]);
+        }
+        for (std::size_t i = 0; i < methods.size(); i++)
+        {
+            delete (methods[i]);
+        }
+    };
     string parentInterface; // its an interface
     vector<Field *> fields;
     vector<Method *> methods;
@@ -655,14 +688,13 @@ public:
         }
         for (std::size_t i = 0; i < methods.size(); i++)
         {
-            result += methods[i]->toString(false);
+            result += methods[i]->toString(false, this, 2);
         }
         result += "\n}";
         return result;
     }
     void toFile()
     {
-        cout << "name " << name << " package " + package + ";\n\n";
         ofstream *p = createFile(package, name);
         if (p == nullptr)
         {
@@ -734,7 +766,21 @@ public:
             imports.insert(patentpckg + "." + iparent);
         }
     }
-    ~Exception(){};
+    ~Exception()
+    {
+        for (std::size_t i = 0; i < fields.size(); i++)
+        {
+            delete (fields[i]);
+        }
+        for (std::size_t i = 0; i < methods.size(); i++)
+        {
+            delete (methods[i]);
+        }
+        for (std::size_t i = 0; i < constructors.size(); i++)
+        {
+            delete (constructors[i]);
+        }
+    };
     string parentException;
     vector<Field *> fields;
     vector<Method *> methods;
@@ -769,11 +815,11 @@ public:
         }
         for (std::size_t i = 0; i < constructors.size(); i++)
         {
-            result += constructors[i]->toString();
+            result += constructors[i]->toString(this, 1);
         }
         for (std::size_t i = 0; i < methods.size(); i++)
         {
-            result += methods[i]->toString(true);
+            result += methods[i]->toString(true, this, 1);
         }
         result += "\n}";
         return result;
@@ -863,6 +909,26 @@ public:
             files[i]->toFile();
         }
     }
+    File *getParent(string name)
+    {
+        File *result = nullptr;
+        for (std::size_t i = 0; i < files.size(); i++)
+        {
+            if (files[i]->name == name)
+            {
+                if (result == nullptr)
+                {
+                    result = files[i];
+                }
+                else
+                {
+                    cout << "**Error** - Multiple potential parents!\n";
+                    return nullptr;
+                }
+            }
+        }
+        return result;
+    }
 };
 
 // makes all necessary imports from typemaker
@@ -930,7 +996,7 @@ string typeMaker(string type, File *parent)
         string temp = type.substr(type.find("of ") + 3);
         string key = temp.substr(0, temp.find(" to "));
         string value = temp.substr(temp.find(" to ") + 4);
-        type = "HashMap<" + key + ", " + value + ">";
+        type = "HashMap<" + typeMaker(key, parent) + ", " + typeMaker(value, parent) + ">";
     }
     else if (type.find("of ") != string::npos) // try to autocomplete unimplemented types
     {
@@ -1070,7 +1136,17 @@ Method *createMethod(fstream *infile, string line, File *parent)
     tempname = line.substr(line.find('"') + 1);
     tempname = tempname.substr(0, tempname.find('"'));
     m->name = tempname;
-    if (line.find("withParams") != string::npos)
+    if (line.find("withArgsSimilarToFields") != string::npos) // using the File class we can search for these
+    {
+        m->simField = true;
+        string temp = line.substr(line.find("withArgsSimilarToFields") + 24);
+        temp = temp.substr(temp.find('"'));
+        temp = temp.substr(0, temp.find(")"));
+        temp = temp.substr(0, temp.find_last_of('"'));
+        temp = removeQuotes(temp);
+        tempParamNames = split(temp, ", ");
+    }
+    else if (line.find("withParams") != string::npos)
     {
         string temp = line.substr(line.find("withParams(") + 11);
         temp = temp.substr(0, temp.find(")"));
@@ -1124,8 +1200,8 @@ Method *createMethod(fstream *infile, string line, File *parent)
             }
             else
             {
-                tempReturnType = line.substr(line.find("thatReturns(") + 13);
-                tempReturnType = tempReturnType.substr(0, tempReturnType.find(")"));
+                tempReturnType = line.substr(line.find('"') + 1);
+                tempReturnType = tempReturnType.substr(0, tempReturnType.find('"'));
                 tempReturnType = typeMaker(tempReturnType, parent);
             }
         }
@@ -1144,15 +1220,17 @@ Constructor *createConstructor(fstream *infile, string line, File *parent)
     {
         if (line.find("withArgsAsInParent") != string::npos) // using the File class we can search for these
         {
-            cout << "**WARNING** Constructor withArgsAsInParent\n";
-            /*paramTypes.push_back("withArgsAsInParent");
-            paramNames.push_back("withArgsAsInParent");*/
+            c->simParent = true;
         }
         else if (line.find("withArgsSimilarToFields") != string::npos) // using the File class we can search for these
         {
-            cout << "**WARNING** Constructor withArgsSimilarToFields\n";
-            /*paramTypes.push_back("withArgsSimilarToFields");
-            paramNames.push_back("withArgsSimilarToFields");*/
+            c->simField = true;
+            string temp = line.substr(line.find("withArgsSimilarToFields") + 24);
+            temp = temp.substr(temp.find('"'));
+            temp = temp.substr(0, temp.find(")"));
+            temp = temp.substr(0, temp.find_last_of('"'));
+            temp = removeQuotes(temp);
+            tempParamNames = split(temp, ", ");
         }
         else if (line.find("withArgs(") != string::npos)
         {
@@ -1185,6 +1263,183 @@ Constructor *createConstructor(fstream *infile, string line, File *parent)
     getline(*infile, line);
     c->visibility = protlvl(line);
     return c;
+}
+
+// type == 0 similarToFields, type == 1 similarToParent || parenttype == 0 class parenttype == 1 exception
+string getSpecialParam(void *caller, int type, int parenttype, vector<string> paramNames, bool isConstructor)
+{
+    string result = "";
+    if (parenttype == 0)
+    {
+        Class *c = static_cast<Class *>(caller);
+        if (type == 0)
+        {
+            vector<string> paramTypes;
+            for (std::size_t i = 0; i < c->fields.size(); i++)
+            {
+                for (std::size_t j = 0; j < paramNames.size(); j++)
+                {
+                    if (paramNames[j] == c->fields[i]->name)
+                    {
+                        paramTypes.push_back(c->fields[i]->type);
+                    }
+                }
+            }
+            for (std::size_t i = 0; i < paramTypes.size(); i++)
+            {
+                result += paramTypes[i] + " " + paramNames[i];
+                if (i != paramTypes.size() - 1)
+                {
+                    result += ", ";
+                }
+            }
+            result += ")";
+            if (isConstructor)
+            {
+                result += " {\n";
+                for (std::size_t i = 0; i < paramNames.size(); i++)
+                {
+                    result += "\t\tthis." + paramNames[i] + " = " + paramNames[i] + ";\n";
+                }
+            }
+        }
+        else if (type == 1)
+        {
+            File *parent = c->wrapper->getParent(c->parent);
+            if (parent == nullptr)
+            {
+                result += "TODO simParent){\n ";
+            }
+            else
+            {
+                Class *classParent = dynamic_cast<Class *>(parent);
+                if (classParent != nullptr)
+                {
+                    Constructor *constructor = nullptr;
+                    std::size_t prtc = 0;
+                    for (std::size_t i = 0; i < classParent->constructors.size(); i++)
+                    {
+                        if (classParent->constructors[i]->paramTypes.size() > prtc)
+                        {
+                            constructor = classParent->constructors[i];
+                        }
+                    }
+                    if (constructor == nullptr)
+                    {
+                        result += "TODO simParent){\n ";
+                    }
+                    else
+                    {
+                        for (std::size_t i = 0; i < constructor->paramTypes.size(); i++)
+                        {
+                            result += constructor->paramTypes[i] + " " + constructor->paramNames[i];
+                            if (i != constructor->paramTypes.size() - 1)
+                            {
+                                result += ", ";
+                            }
+                        }
+                        result += ") {\n";
+                        result += "\t\tsuper(";
+                        for (std::size_t i = 0; i < constructor->paramNames.size(); i++)
+                        {
+                            result += constructor->paramNames[i];
+                            if (i != constructor->paramNames.size() - 1)
+                            {
+                                result += ", ";
+                            }
+                        }
+                        result += ");\n\t\t//TODO\n";
+                    }
+                }
+                else
+                {
+                    result += "TODO simParent){\n ";
+                }
+            }
+        }
+    }
+    else if (parenttype == 1) // I have no idea how to do this better :/
+    {
+        Exception *e = static_cast<Exception *>(caller);
+        if (type == 0)
+        {
+            vector<string> paramTypes;
+            for (std::size_t i = 0; i < e->fields.size(); i++)
+            {
+                for (std::size_t j = 0; j < paramNames.size(); j++)
+                {
+                    if (paramNames[j] == e->fields[i]->name)
+                    {
+                        paramTypes.push_back(e->fields[i]->type);
+                    }
+                }
+            }
+            for (std::size_t i = 0; i < paramTypes.size(); i++)
+            {
+                result += paramTypes[i] + " " + paramNames[i];
+                if (i != paramTypes.size() - 1)
+                {
+                    result += ", ";
+                }
+            }
+            result += ") {\n\t\t//TODO}\n";
+        }
+        else if (type == 1)
+        {
+            File *parent = e->wrapper->getParent(e->parentException);
+            if (parent == nullptr)
+            {
+                result += "TODO simParent){\n ";
+            }
+            else
+            {
+                Exception *exceptionParent = dynamic_cast<Exception *>(parent);
+                if (exceptionParent != nullptr)
+                {
+                    Constructor *constructor = nullptr;
+                    std::size_t prtc = 0;
+                    for (std::size_t i = 0; i < exceptionParent->constructors.size(); i++)
+                    {
+                        if (exceptionParent->constructors[i]->paramTypes.size() > prtc)
+                        {
+                            constructor = exceptionParent->constructors[i];
+                        }
+                    }
+                    if (constructor == nullptr)
+                    {
+                        result += "TODO simParent){\n ";
+                    }
+                    else
+                    {
+                        for (std::size_t i = 0; i < constructor->paramTypes.size(); i++)
+                        {
+                            result += constructor->paramTypes[i] + " " + constructor->paramNames[i];
+                            if (i != constructor->paramTypes.size() - 1)
+                            {
+                                result += ", ";
+                            }
+                        }
+                        result += ") {\n";
+                        result += "\t\tsuper(";
+                        for (std::size_t i = 0; i < constructor->paramNames.size(); i++)
+                        {
+                            result += constructor->paramNames[i];
+                            if (i != constructor->paramNames.size() - 1)
+                            {
+                                result += ", ";
+                            }
+                        }
+                        result += ");\n\t\t//TODO\n";
+                    }
+                }
+                else
+                {
+                    result += "TODO simParent){\n ";
+                }
+            }
+        }
+    }
+    return result;
 }
 
 File *getFile(string inpth, Wrapper *wp) // nullptr == fail
@@ -1334,7 +1589,7 @@ int main(int argc, char **args)
         cout << "Usage: " << args[0] << " <input file>" << endl;
         exit(1);
     }
-    Wrapper *wp = new Wrapper();
+    Wrapper *wp = new Wrapper(); // this is a global variable
     for (int i = 1; i < argc; i++)
     {
         wp->addFile(getFile(args[i], wp));

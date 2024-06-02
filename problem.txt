@@ -1,5 +1,10 @@
-double layer Maps
-data.structure.peculiar.StuffyList >> HashSet<E does not close ">" Testfile: lab10/StuffyListStructureTest
-similar bugs:
-    loop iterator GoAroundIterator
-problem is in constructor and method parameters
+// these are all getter or setter problems
+
+linear.program.utils.Constraint.java test/beadando2024/
+linear.program.utils.Variable.java test/beadando2024/
+magic.library.Incantation.java
+race.car.WrongSectorTimer2.java
+time.Time.java
+
+// these are constructor errors
+race.car.WrongSectorTimer1.java test/gyakorlat2024/lab06/

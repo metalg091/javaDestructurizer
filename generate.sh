@@ -36,7 +36,7 @@ fi
 
 if [ -f "$dir" ]; then
     # Check if the file is a java file
-    if [[ "$dir" != "*.java" ]]; then
+    if [[ "$dir" != *.java ]]; then
         echo "Not a java file"
         exit 1
     fi
