@@ -1137,8 +1137,8 @@ pair<string, string> typeNameSeparator(string line, File *parent)
     {
         if (line.find(':') != string::npos)
         {
-            type = line.substr(line.find(':') + 2, line.find(')') - line.find(':') - 3);
-            name = line.substr(line.find('"') + 1, line.find(':') - line.find('"') - 1);
+            type = line.substr(line.find(':') + 2);
+            name = line.substr(0, line.find(':'));
             return make_pair(typeMaker(type, parent), removeQuotes(name));
         }
         else
@@ -1336,7 +1336,7 @@ Constructor *createConstructor(fstream *infile, string line, File *parent)
             tempParamNames.push_back("unimplemented");
         }
     }
-    else if (line.find("hasConstructorWithParams"))
+    else if (line.find("hasConstructorWithParams") != string::npos)
     {
         string temp = line.substr(line.find('(') + 1);
         temp = temp.substr(0, temp.find(')'));
@@ -1345,6 +1345,25 @@ Constructor *createConstructor(fstream *infile, string line, File *parent)
         {
             tempParamTypes.push_back(typeMaker(tempV[i], parent));
             tempParamNames.push_back("todoName" + to_string(i));
+        }
+    }
+    else if (line.find("withParams") != string::npos)
+    {
+        string temp = line.substr(line.find("withParams") + 12);
+        temp = temp.substr(0, temp.find(')'));
+        vector<string> tempV = split(temp, ", ");
+        for (std::size_t i = 0; i < tempV.size(); i++)
+        {
+            // auto [temptype, tempname] = typeNameSeparator(tempV[i]); // only works after c++11
+            pair<string, string> tempPair = typeNameSeparator(tempV[i], parent);
+            string temptype = tempPair.first;
+            string tempname = tempPair.second;
+            if (tempname == "todoName")
+            {
+                tempname = "todoName" + to_string(i);
+            }
+            tempParamTypes.push_back(temptype);
+            tempParamNames.push_back(tempname);
         }
     } // else no params
     c->paramNames = tempParamNames;
