@@ -62,7 +62,7 @@ if [ "$response" = "y" ]; then
     # create an array for compilation errors
     errors=()
     # Compile the files for testing with javac excluding the test directory
-    find "." -name "*.java" -not -path "*/test/*" -exec javac {} \;
+    find "." -name "*.java" -not -path "*/test/*" -not -name "*Test.java" -exec javac {} \;
     # Check if compilation was successful and add to errors array if not
     if [ $? -ne 0 ]; then
         errors+=("$file")
