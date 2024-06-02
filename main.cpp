@@ -462,20 +462,20 @@ public:
             imports.insert(interfacepckg + "." + iinterface);
         }
     }
-    ~Class(){
-        // TODO says double free
-        /*for (std::size_t i = 0; i < fields.size(); i++)
+    ~Class()
+    {
+        for (std::size_t i = 0; i < fields.size(); i++)
         {
-            delete &(fields[i]);
+            delete (fields[i]);
         }
         for (std::size_t i = 0; i < methods.size(); i++)
         {
-            delete &(methods[i]);
+            delete (methods[i]);
         }
         for (std::size_t i = 0; i < constructors.size(); i++)
         {
-            delete &(constructors[i]);
-        }*/
+            delete (constructors[i]);
+        }
     };
     string parent;    // its a class
     string interface; // its an interface
@@ -644,7 +644,17 @@ public:
             imports.insert(interfacepckg + "." + iinterface);
         }
     }
-    ~Interface(){};
+    ~Interface()
+    {
+        for (std::size_t i = 0; i < fields.size(); i++)
+        {
+            delete (fields[i]);
+        }
+        for (std::size_t i = 0; i < methods.size(); i++)
+        {
+            delete (methods[i]);
+        }
+    };
     string parentInterface; // its an interface
     vector<Field *> fields;
     vector<Method *> methods;
@@ -756,7 +766,21 @@ public:
             imports.insert(patentpckg + "." + iparent);
         }
     }
-    ~Exception(){};
+    ~Exception()
+    {
+        for (std::size_t i = 0; i < fields.size(); i++)
+        {
+            delete (fields[i]);
+        }
+        for (std::size_t i = 0; i < methods.size(); i++)
+        {
+            delete (methods[i]);
+        }
+        for (std::size_t i = 0; i < constructors.size(); i++)
+        {
+            delete (constructors[i]);
+        }
+    };
     string parentException;
     vector<Field *> fields;
     vector<Method *> methods;
