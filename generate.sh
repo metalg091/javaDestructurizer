@@ -74,9 +74,9 @@ if [ "$response" = "y" ]; then
             echo "$error"
         done
     fi
-    # Run all Structure tests
-    # They are run by ./check.cmd path/to/StructureTest.java path.to.StructureTest
-    for file in $files; do
+    # Run all TestSuites tests
+    # They are run by ./check.cmd path/to/TestSuite.java path.to.TestSuite
+    for file in $suite; do
         # replace / with . and remove .java
         package=${file%.java}
         package=$(echo $package | sed 's/\//./g')
