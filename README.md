@@ -28,8 +28,8 @@ Also, attach the failing test file!
 
 # Contributing:
 
-### Read the Project to avoid working on the same problem multiple times!
+This Project is basically abandoned, I will respond to any activity, but i will not develop the project further.
 
-**KEEP IT SIMPLE!** I'm not very good at coding and if I don't understand what your code does I'm not merging.
-Feel free to upload any and every official structure test you can find to the test folder!
-Also, do not insult the code or the style in any way plz!
+The main part of the project is the spagetti code found in main.cpp, I would suggest rewriting the whole thing from source, I really didn't understand the language when i wrote it.
+
+If you want to fix it up, just open a pull request and i will check it and merge.
