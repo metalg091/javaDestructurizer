@@ -14,8 +14,6 @@ It:
 - creates necessary test files
 - and so on...
 
-## Please drop a **Star** if you found it useful
-
 # Usage:
 Place the main.cpp and the generate.sh in the same folder.
 Place them in a director so that all the structure tests are in the same or a sub-directory.
